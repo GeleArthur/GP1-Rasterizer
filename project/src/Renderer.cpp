@@ -43,57 +43,48 @@ void Renderer::Render()
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
 
-	const std::vector<Vertex> vertices_ndc{
-		{{0.f, 0.5f, 1.0f}, colors::White},
-		{{0.5f, -0.5f, 1.0f}, colors::White},
-		{{-0.5f, -0.5f, 1.0f}, colors::White}
+	const std::vector<Vertex> vertices_world
+	{
+		{{0.f, 2.0f, 0.0f}},
+		{{1.0f, 0.0f, 0.0f}},
+		{{-1.f, 0.f, 0.f}}
 	};
 
-	std::vector<Vertex> vertices_screen_space{};
-	vertices_screen_space.reserve(vertices_ndc.size());
+	// const std::vector<Vertex> vertices_ndc{
+	// 	{{0.f, 0.5f, 1.0f}, colors::White},
+	// 	{{0.5f, -0.5f, 1.0f}, colors::White},
+	// 	{{-0.5f, -0.5f, 1.0f}, colors::White}
+	// };
 
-	VertexTransformationFunction(vertices_ndc, vertices_screen_space);
+	std::vector<Vertex> vertices_screen_space{};
+	vertices_screen_space.reserve(vertices_world.size());
+
+	VertexTransformationFunction(vertices_world, vertices_screen_space);
 
 	for (auto pos = vertices_screen_space.begin(); pos != vertices_screen_space.end(); pos+=3)
 	{
+		Vector2 v0 = {(pos->position.x + 1)/ 2.0f * m_Width,     (1 - pos->position.y)/ 2.0f * m_Height};
+		Vector2 v1 = {((pos+1)->position.x + 1)/ 2.0f * m_Width, (1 - (pos+1)->position.y)/ 2.f * m_Height};
+		Vector2 v2 = {((pos+2)->position.x + 1)/ 2.0f * m_Width, (1 - (pos+2)->position.y)/ 2.f * m_Height};
+
 		for (int px{}; px < m_Width; ++px)
 		{
 			for (int py{}; py < m_Height; ++py)
 			{
+				Vector2 pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
 
-				Vector3 P = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f, 1.0f};
-				Vector3 n = {0,0,1};
+				ColorRGB finalColor{ 0, 0, 0 };
 
+
+				const float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
+				const float distV0 = Vector2::Cross(v2 - v1, pixelLocation - v1);
+				const float distV1 = Vector2::Cross(v0 - v2, pixelLocation - v2);
+
+				if(distV2 > 0 && distV0 > 0 && distV1 > 0)
 				{
-					Vector3 e = (pos+1)->position - pos->position;
-					Vector3 p = P - pos->position;
-
-					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
-					{
-						continue;
-					}
-				}
-				{
-					Vector3 e = (pos+2)->position - (pos+1)->position;
-					Vector3 p = P - (pos+1)->position;
-
-					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
-					{
-						continue;
-					}
-				}
-				{
-					Vector3 e = (pos)->position - (pos+2)->position;
-					Vector3 p = P - (pos+2)->position;
-
-					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
-					{
-						continue;
-					}
+					finalColor = {1,1,1};
 				}
 
-
-				ColorRGB finalColor{ 1, 1, 1 };
 
 				//Update Color in Buffer
 				finalColor.MaxToOne();
@@ -118,12 +109,13 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 {
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
-		const Vector3& vertices_ndc = vertices_in[i].position;
+		Vector3 vertices_ndc = vertices_in[i].position;
+		vertices_ndc = m_Camera.invViewMatrix.TransformPoint(vertices_ndc);
+		vertices_ndc.x = vertices_ndc.x/vertices_ndc.z;
+		vertices_ndc.y = vertices_ndc.y/vertices_ndc.z;
 
-		vertices_out.push_back(Vertex{
-			Vector3{(vertices_ndc.x+1)/2.0f*m_Width, (1-vertices_ndc.y)/2.0f*m_Height, vertices_ndc.z},
-			vertices_in[i].color,
-		});
+
+		vertices_out.push_back({vertices_ndc , vertices_in[i].color});
 
 	}
 

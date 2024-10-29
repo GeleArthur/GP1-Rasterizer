@@ -22,3 +22,5 @@ bld/
 !project/libs/**
 build
 .DS_Store
+cmake-build-debug
+.idea
