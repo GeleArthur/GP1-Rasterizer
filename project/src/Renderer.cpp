@@ -43,33 +43,69 @@ void Renderer::Render()
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
 
-
-	std::vector<Vector3> vertices_ndc{
-		{0.f, 0.5f, 1.0f},
-		{0.5f, -0.5f, 1.0f},
-		{-0.5f, -0.5f, 1.0f}
+	const std::vector<Vertex> vertices_ndc{
+		{{0.f, 0.5f, 1.0f}, colors::White},
+		{{0.5f, -0.5f, 1.0f}, colors::White},
+		{{-0.5f, -0.5f, 1.0f}, colors::White}
 	};
 
-	//RENDER LOGIC
-	for (int px{}; px < m_Width; ++px)
+	std::vector<Vertex> vertices_screen_space{};
+	vertices_screen_space.reserve(vertices_ndc.size());
+
+	VertexTransformationFunction(vertices_ndc, vertices_screen_space);
+
+	for (auto pos = vertices_screen_space.begin(); pos != vertices_screen_space.end(); pos+=3)
 	{
-		for (int py{}; py < m_Height; ++py)
+		for (int px{}; px < m_Width; ++px)
 		{
-			float gradient = px / static_cast<float>(m_Width);
-			gradient += py / static_cast<float>(m_Width);
-			gradient /= 2.0f;
+			for (int py{}; py < m_Height; ++py)
+			{
 
-			ColorRGB finalColor{ gradient, gradient, gradient };
+				Vector3 P = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f, 1.0f};
+				Vector3 n = {0,0,1};
 
-			//Update Color in Buffer
-			finalColor.MaxToOne();
+				{
+					Vector3 e = (pos+1)->position - pos->position;
+					Vector3 p = P - pos->position;
 
-			m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-				static_cast<uint8_t>(finalColor.r * 255),
-				static_cast<uint8_t>(finalColor.g * 255),
-				static_cast<uint8_t>(finalColor.b * 255));
+					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
+					{
+						continue;
+					}
+				}
+				{
+					Vector3 e = (pos+2)->position - (pos+1)->position;
+					Vector3 p = P - (pos+1)->position;
+
+					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
+					{
+						continue;
+					}
+				}
+				{
+					Vector3 e = (pos)->position - (pos+2)->position;
+					Vector3 p = P - (pos+2)->position;
+
+					if (Vector3::Dot(Vector3::Cross(e, p), n) < 0)
+					{
+						continue;
+					}
+				}
+
+
+				ColorRGB finalColor{ 1, 1, 1 };
+
+				//Update Color in Buffer
+				finalColor.MaxToOne();
+
+				m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+					static_cast<uint8_t>(finalColor.r * 255),
+					static_cast<uint8_t>(finalColor.g * 255),
+					static_cast<uint8_t>(finalColor.b * 255));
+			}
 		}
 	}
+
 
 	//@END
 	//Update SDL Surface
@@ -80,7 +116,16 @@ void Renderer::Render()
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
+	for (int i{}; i < vertices_in.size(); ++i)
+	{
+		const Vector3& vertices_ndc = vertices_in[i].position;
 
+		vertices_out.push_back(Vertex{
+			Vector3{(vertices_ndc.x+1)/2.0f*m_Width, (1-vertices_ndc.y)/2.0f*m_Height, vertices_ndc.z},
+			vertices_in[i].color,
+		});
+
+	}
 
 }
 
