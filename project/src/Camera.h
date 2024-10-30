@@ -117,7 +117,6 @@ namespace dae
 				totalYaw += float(mouseX) * 0.01f;
 			}
 
-			std::cout << input.z << " " << input.x << '\n';
 
 			forward = Matrix::CreateRotation(totalPitch, totalYaw, 0).TransformVector(Vector3::UnitZ);
 			forward.Normalize();
