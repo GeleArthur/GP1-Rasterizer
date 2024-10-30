@@ -107,7 +107,7 @@ namespace dae
 
 			if(mouseState == SDL_BUTTON_RMASK)
 			{
-				totalPitch += float(mouseY) * 0.01f;
+				totalPitch += -float(mouseY) * 0.01f;
 				totalYaw += float(mouseX) * 0.01f;
 			}
 			else if(mouseState == SDL_BUTTON_LMASK)

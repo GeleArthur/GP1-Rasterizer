@@ -45,9 +45,9 @@ void Renderer::Render()
 
 	const std::vector<Vertex> vertices_world
 	{
-		{{0.f, 2.0f, 0.0f}},
-		{{1.0f, 0.0f, 0.0f}},
-		{{-1.f, 0.f, 0.f}}
+		{{0.f, 4.0f, 2.0f} , {1,0,0}},
+		{{3.0f, -2.0f, 2.0f}, {0,1,0}},
+		{{-3.f, -2.f, 2.f} , {0,0,1}}
 	};
 
 	// const std::vector<Vertex> vertices_ndc{
@@ -75,14 +75,15 @@ void Renderer::Render()
 
 				ColorRGB finalColor{ 0, 0, 0 };
 
-
 				const float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
 				const float distV0 = Vector2::Cross(v2 - v1, pixelLocation - v1);
 				const float distV1 = Vector2::Cross(v0 - v2, pixelLocation - v2);
 
+				const float area = distV2 + distV0 + distV1;
+
 				if(distV2 > 0 && distV0 > 0 && distV1 > 0)
 				{
-					finalColor = {1,1,1};
+					finalColor = (pos->color * distV0/area + (pos+1)->color * distV1/area + (pos+2)->color * distV2/area);
 				}
 
 
@@ -107,12 +108,17 @@ void Renderer::Render()
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
+	float aspect = float(m_Width)/m_Height;
+
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
 		Vector3 vertices_ndc = vertices_in[i].position;
 		vertices_ndc = m_Camera.invViewMatrix.TransformPoint(vertices_ndc);
 		vertices_ndc.x = vertices_ndc.x/vertices_ndc.z;
 		vertices_ndc.y = vertices_ndc.y/vertices_ndc.z;
+
+		vertices_ndc.x = vertices_ndc.x/(aspect*m_Camera.fov);
+		vertices_ndc.y = vertices_ndc.y/m_Camera.fov;
 
 
 		vertices_out.push_back({vertices_ndc , vertices_in[i].color});
