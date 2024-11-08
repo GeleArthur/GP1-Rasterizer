@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.20..3.31)
 
 # Project Name
 project(GP1_Rasterizer)
