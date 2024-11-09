@@ -50,12 +50,38 @@ void Renderer::Render()
 		{{1.5f, -1.0f, 0}, {1,0,0}},
 		{{-1.5f, -1.f, 0.f}, {1,0,0}},
 
-
 		{{0.f, 4.0f, 2.0f} , {1,0,0}},
 		{{3.0f, -2.0f, 2.0f}, {0,1,0}},
 		{{-3.f, -2.f, 2.f} , {0,0,1}},
+	};
 
-
+	const Mesh quadMesh{
+		{		
+			std::vector<Vertex>{
+				{{-3, 3, -2},{colors::White}},
+				{{0, 3, -2},{colors::White}},
+				{{3, 3, -2},{colors::White}},
+				{{-3, 0, -2},{colors::White}},
+				{{0, 0, -2},{colors::White}},
+				{{3, 0, -2},{colors::White}},
+				{{-3, -3, -2},{colors::White}},
+				{{0, -3, -2},{colors::White}},
+				{{3, -3, -2},{colors::White}},
+			}
+		},
+		{
+			{
+				3,0,4, 
+				0,1,4, 
+				4,1,5, 
+				1,2,5, 
+				6,3,7, 
+				3,4,7, 
+				7,4,8, 
+				4,5,8 
+			}
+		},
+		PrimitiveTopology::TriangleList,
 	};
 
 	// const std::vector<Vertex> vertices_ndc{
@@ -70,7 +96,6 @@ void Renderer::Render()
 
 	VertexTransformationFunction(vertices_world, vertices_screen_space);
 
-
 	for (auto pos = vertices_screen_space.begin(); pos != vertices_screen_space.end(); pos+=3)
 	{
 		Vector2 v0 = {(pos->position.x + 1)/ 2.0f * m_Width,     (1 - pos->position.y)/ 2.0f * m_Height};
@@ -80,7 +105,7 @@ void Renderer::Render()
 		int minX = std::max(0, static_cast<int>(std::min({v0.x, v1.x, v2.x})));
 		int minY = std::max(0, static_cast<int>(std::min({v0.y, v1.y, v2.y})));
 		int maxX = std::min(m_Width, static_cast<int>(std::ceil(std::max({v0.x, v1.x, v2.x}))));
-		int maxY = std::max(m_Height, static_cast<int>(std::ceil(std::max({v0.y, v1.y, v2.y}))));
+		int maxY = std::min(m_Height, static_cast<int>(std::ceil(std::max({v0.y, v1.y, v2.y}))));
 
 		for (int px{minX}; px < maxX; ++px)
 		{
@@ -89,6 +114,8 @@ void Renderer::Render()
 				Vector2 pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
 
 				ColorRGB finalColor{ 0, 0, 0 };
+
+				//(v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
 				float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
 				float distV0 = Vector2::Cross(v2 - v1, pixelLocation - v1);

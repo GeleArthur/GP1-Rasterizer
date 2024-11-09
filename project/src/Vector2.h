@@ -17,13 +17,22 @@ namespace dae
 		Vector2 Normalized() const;
 
 		static float Dot(const Vector2& v1, const Vector2& v2);
-		static float Cross(const Vector2& v1, const Vector2& v2);
+		//static float Cross(const Vector2& v1, const Vector2& v2);
+		inline static float Cross(const Vector2& v1, const Vector2& v2)
+		{
+			return v1.x * v2.y - v1.y * v2.x;
+		}
 
 		//Member Operators
 		Vector2 operator*(float scale) const;
 		Vector2 operator/(float scale) const;
 		Vector2 operator+(const Vector2& v) const;
-		Vector2 operator-(const Vector2& v) const;
+		//Vector2 operator-(const Vector2& v) const;
+		inline Vector2 operator-(const Vector2& v) const
+		{
+			return { x - v.x, y - v.y };
+		}
+
 		Vector2 operator-() const;
 		//Vector2& operator-();
 		Vector2& operator+=(const Vector2& v);
