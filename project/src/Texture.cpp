@@ -24,15 +24,23 @@ namespace dae
 		//TODO
 		//Load SDL_Surface using IMG_LOAD
 		//Create & Return a new Texture Object (using SDL_Surface)
+		SDL_Surface* pSurface = IMG_Load(path.c_str());
+		Texture* pTexture = new Texture(pSurface);
 
-		return nullptr;
+		return pTexture;
 	}
 
 	ColorRGB Texture::Sample(const Vector2& uv) const
 	{
-		//TODO
-		//Sample the correct texel for the given uv
+		Uint8 red, green, blue;
+		Vector2 clamped = {std::clamp(uv.x, 0.0f, 1.0f), std::clamp(uv.y, 0.0f, 1.0f)};
+		
+		SDL_GetRGB(m_pSurfacePixels[
+			static_cast<int>(clamped.x * static_cast<float>(m_pSurface->w - 1)) +
+			static_cast<int>(clamped.y * static_cast<float>(m_pSurface->h - 1)) * (m_pSurface->w)
+			],
+			m_pSurface->format, &red, &green, &blue);
 
-		return {};
+		return ColorRGB{static_cast<float>(red)/255.0f, static_cast<float>(green)/255.0f, static_cast<float>(blue)/255.0f};
 	}
 }

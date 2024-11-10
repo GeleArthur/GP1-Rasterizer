@@ -29,6 +29,7 @@ namespace dae
 
 		void Update(Timer* pTimer);
 		void Render();
+		void RenderPixels(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, std::vector<float>& depth_buffer, const Texture& texture);
 
 		bool SaveBufferToImage() const;
 
@@ -42,6 +43,9 @@ namespace dae
 		uint32_t* m_pBackBufferPixels{};
 
 		//float* m_pDepthBufferPixels{};
+
+		std::vector<Mesh*>  m_Meshes;
+		Texture* m_Texture;
 
 		Camera m_Camera{};
 
