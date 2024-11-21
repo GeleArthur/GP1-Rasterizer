@@ -1,4 +1,7 @@
 #include "Texture.h"
+
+#include <memory>
+
 #include "Vector2.h"
 #include <SDL_image.h>
 
@@ -19,15 +22,11 @@ namespace dae
 		}
 	}
 
-	Texture* Texture::LoadFromFile(const std::string& path)
+	std::unique_ptr<Texture> Texture::LoadFromFile(const std::string& path)
 	{
-		//TODO
-		//Load SDL_Surface using IMG_LOAD
-		//Create & Return a new Texture Object (using SDL_Surface)
 		SDL_Surface* pSurface = IMG_Load(path.c_str());
-		Texture* pTexture = new Texture(pSurface);
-
-		return pTexture;
+		return std::unique_ptr<Texture>(new Texture(pSurface));
+		//return std::make_unique<Texture>(pSurface);
 	}
 
 	ColorRGB Texture::Sample(const Vector2& uv) const

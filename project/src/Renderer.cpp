@@ -52,9 +52,11 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	// 	PrimitiveTopology::TriangleList,
 	// });
 
-	m_Meshes.push_back(new Mesh{
+
+
+	m_Meshes.push_back(std::make_unique<Mesh>(Mesh{
 		std::vector<Vertex>{
-			{{-3, 3, -2}, {colors::White}, {0,0} }, 
+			{{-3, 3, -2}, {colors::White}, {0,0} },
 			{{0, 3, -2}, {colors::White}, {0.5,0}},
 			{{3, 3, -2}, {colors::White}, {1,0}},
 			{{-3, 0, -2}, {colors::White}, {0,0.5}},
@@ -67,10 +69,17 @@ Renderer::Renderer(SDL_Window* pWindow) :
 		std::vector<uint32_t>{
 			3, 0, 4, 1, 5, 2,
 			2, 6,
-			6, 3, 7, 4, 8, 5, 
+			6, 3, 7, 4, 8, 5,
 		},
 		PrimitiveTopology::TriangleStrip,
-	});
+		{},
+		{
+			{1,0,0,0},
+			{0,1,0,0},
+			{0,0,1,0},
+			{0,0,0,1},
+		}
+	}));
 
 	m_Texture = Texture::LoadFromFile("resources/uv_grid_2.png");
 }
@@ -93,21 +102,21 @@ void Renderer::Render()
 	SDL_FillRect(m_pBackBuffer, nullptr, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 	SDL_LockSurface(m_pBackBuffer);
 
-	for (Mesh* mesh : m_Meshes)
+	for (auto& mesh : m_Meshes)
 	{
 		std::vector depthBuffer(m_Height * m_Width, std::numeric_limits<float>::max());
-		std::vector<Vertex> verticesScreenSpace{};
 
-		VertexTransformationFunction(mesh->vertices, verticesScreenSpace);
+		mesh->vertices_out.clear();
+		VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
 		
 		switch (mesh->primitiveTopology)
 		{
 		case PrimitiveTopology::TriangleList:
 			for (int i = 0; i < mesh->indices.size(); i+=3 )
 			{
-				const Vertex& vertex0 = verticesScreenSpace[mesh->indices[i]];
-				const Vertex& vertex1 = verticesScreenSpace[mesh->indices[i+1]];
-				const Vertex& vertex2 = verticesScreenSpace[mesh->indices[i+2]];
+				const Vertex_Out& vertex0 = mesh->vertices_out[mesh->indices[i]];
+				const Vertex_Out& vertex1 = mesh->vertices_out[mesh->indices[i+1]];
+				const Vertex_Out& vertex2 = mesh->vertices_out[mesh->indices[i+2]];
 
 				RenderPixels(vertex0, vertex1, vertex2, depthBuffer, *m_Texture);
 			}
@@ -120,21 +129,21 @@ void Renderer::Render()
 					continue;
 				}
 				
-				Vertex* vertex0;
-				Vertex* vertex1;
-				Vertex* vertex2;
+				Vertex_Out* vertex0;
+				Vertex_Out* vertex1;
+				Vertex_Out* vertex2;
 				
 				if( !(i & 1) ) // isEven
 				{
-					vertex0 = &verticesScreenSpace[mesh->indices[i]];
-					vertex1 = &verticesScreenSpace[mesh->indices[i+1]];
-					vertex2 = &verticesScreenSpace[mesh->indices[i+2]];
+					vertex0 = &mesh->vertices_out[mesh->indices[i]];
+					vertex1 = &mesh->vertices_out[mesh->indices[i+1]];
+					vertex2 = &mesh->vertices_out[mesh->indices[i+2]];
 				}
 				else // odd
 				{
-					vertex0 = &verticesScreenSpace[mesh->indices[i]];
-					vertex2 = &verticesScreenSpace[mesh->indices[i+1]];
-					vertex1 = &verticesScreenSpace[mesh->indices[i+2]];
+					vertex0 = &mesh->vertices_out[mesh->indices[i]];
+					vertex2 = &mesh->vertices_out[mesh->indices[i+1]];
+					vertex1 = &mesh->vertices_out[mesh->indices[i+2]];
 				}
 
 				RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer, *m_Texture);
@@ -153,7 +162,7 @@ void Renderer::Render()
 	SDL_UpdateWindowSurface(m_pWindow);
 }
 
-void Renderer::RenderPixels(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, std::vector<float>& depth_buffer, const Texture& texture)
+void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer, const Texture& texture)
 {
 		Vector2 v0 = {(vertex0.position.x + 1) / 2.0f * m_Width, (1 - vertex0.position.y) / 2.0f * m_Height};
 		Vector2 v1 = {(vertex1.position.x + 1) / 2.0f * m_Width, (1 - vertex1.position.y) / 2.0f * m_Height};
@@ -191,6 +200,11 @@ void Renderer::RenderPixels(const Vertex& vertex0, const Vertex& vertex1, const 
 					{
 						depth_buffer[px + (py * m_Width)] = depth;
 						Vector2 uv = (vertex0.uv/vertex0.position.z * distV0 + vertex1.uv/vertex1.position.z * distV1 + vertex2.uv/vertex2.position.z * distV2)*depth;
+
+
+
+						//Vector2 uv = (vertex0.uv * distV0 + vertex1.uv * distV1 + vertex2.uv * distV2);
+						
 						//finalColor = (vertex0.color * distV0 + vertex1.color * distV1 + vertex2.color * distV2);
 						finalColor = texture.Sample(uv);
 						//Update Color in Buffer
@@ -206,23 +220,22 @@ void Renderer::RenderPixels(const Vertex& vertex0, const Vertex& vertex1, const 
 		}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in,
-                                            std::vector<Vertex>& vertices_out) const
+void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
 {
 	float aspect = float(m_Width) / float(m_Height);
+	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 0.0001f, 1000.0f);
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
-		Vector3 vertices_ndc = vertices_in[i].position;
-		vertices_ndc = m_Camera.invViewMatrix.TransformPoint(vertices_ndc);
-		vertices_ndc.x = vertices_ndc.x / vertices_ndc.z;
-		vertices_ndc.y = vertices_ndc.y / vertices_ndc.z;
+		Vector4 thing = worldViewProjectionMatrix.TransformPoint(Vector4{ vertices_in[i].position, 1 });
 
-		vertices_ndc.x = vertices_ndc.x / (aspect * m_Camera.fov);
-		vertices_ndc.y = vertices_ndc.y / m_Camera.fov;
+		thing.x = thing.x / thing.w;
+		thing.y = thing.y / thing.w;
 
-
-		vertices_out.push_back({vertices_ndc, vertices_in[i].color, vertices_in[i].uv});
+		thing.w = 1 / thing.w;
+		
+		
+		vertices_out.push_back(Vertex_Out{thing, vertices_in[i].color, vertices_in[i].uv});
 	}
 }
 
