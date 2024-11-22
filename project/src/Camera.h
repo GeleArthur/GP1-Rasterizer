@@ -15,7 +15,9 @@ namespace dae
 
 		Camera(const Vector3& _origin, float _fovAngle):
 			origin{_origin},
-			fovAngle{_fovAngle}
+			fovAngle{_fovAngle},
+			nearPlane{0.000001f},
+			farPlane{1000}
 		{
 		}
 
@@ -34,10 +36,15 @@ namespace dae
 		Matrix invViewMatrix{};
 		Matrix viewMatrix{};
 
-		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f})
+		float nearPlane{};
+		float farPlane{};
+
+		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f}, float _nearPlane = 0.1f, float _farPlane = 1000.f)
 		{
 			fovAngle = _fovAngle;
 			fov = tanf((fovAngle * TO_RADIANS) / 2.f);
+			nearPlane = _nearPlane;
+			farPlane = _farPlane;
 
 			origin = _origin;
 		}

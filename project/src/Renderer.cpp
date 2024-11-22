@@ -4,6 +4,9 @@
 
 //Project includes
 #include "Renderer.h"
+
+#include <array>
+
 #include "Maths.h"
 #include "Texture.h"
 #include "Utils.h"
@@ -25,33 +28,6 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, {.0f, .0f, -10.f});
-
-
-	// m_Meshes.push_back(new Mesh{
-	// 	std::vector<Vertex>{
-	// 		{{-3, 3, -2}, {colors::White}},
-	// 		{{0, 3, -2}, {colors::White}},
-	// 		{{3, 3, -2}, {colors::White}},
-	// 		{{-3, 0, -2}, {colors::White}},
-	// 		{{0, 0, -2}, {colors::White}},
-	// 		{{3, 0, -2}, {colors::White}},
-	// 		{{-3, -3, -2}, {colors::White}},
-	// 		{{0, -3, -2}, {colors::White}},
-	// 		{{3, -3, -2}, {colors::White}},
-	// 	},
-	// 	std::vector<uint32_t>{
-	// 		3, 0, 4,
-	// 		0, 1, 4,
-	// 		4, 1, 5,
-	// 		1, 2, 5,
-	// 		6, 3, 7,
-	// 		3, 4, 7,
-	// 		7, 4, 8,
-	// 		4, 5, 8
-	// 	},
-	// 	PrimitiveTopology::TriangleList,
-	// });
-
 
 
 	m_Meshes.push_back(std::make_unique<Mesh>(Mesh{
@@ -105,7 +81,7 @@ void Renderer::Render()
 	for (auto& mesh : m_Meshes)
 	{
 		std::vector depthBuffer(m_Height * m_Width, std::numeric_limits<float>::max());
-
+		
 		mesh->vertices_out.clear();
 		VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
 		
@@ -150,7 +126,6 @@ void Renderer::Render()
 			}
 			break;
 		}
-		
 
 	}
 
@@ -181,7 +156,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 
 				ColorRGB finalColor{0, 0, 0};
 
-				//(v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
+				// (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
 				float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
 				float distV0 = Vector2::Cross(v2 - v1, pixelLocation - v1);
@@ -199,14 +174,14 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 					if (depth_buffer[px + (py * m_Width)] >= depth)
 					{
 						depth_buffer[px + (py * m_Width)] = depth;
-						Vector2 uv = (vertex0.uv/vertex0.position.z * distV0 + vertex1.uv/vertex1.position.z * distV1 + vertex2.uv/vertex2.position.z * distV2)*depth;
-
-
-
+						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
+						Vector2 uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
+						
 						//Vector2 uv = (vertex0.uv * distV0 + vertex1.uv * distV1 + vertex2.uv * distV2);
 						
 						//finalColor = (vertex0.color * distV0 + vertex1.color * distV1 + vertex2.color * distV2);
 						finalColor = texture.Sample(uv);
+						finalColor = ColorRGB{depthW,depthW,depthW};
 						//Update Color in Buffer
 						finalColor.MaxToOne();
 
@@ -223,7 +198,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
 {
 	float aspect = float(m_Width) / float(m_Height);
-	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 0.0001f, 1000.0f);
+	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
@@ -231,12 +206,16 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 
 		thing.x = thing.x / thing.w;
 		thing.y = thing.y / thing.w;
-
-		thing.w = 1 / thing.w;
-		
+		thing.z = thing.z / thing.w;
+		// thing.w = thing.w;
 		
 		vertices_out.push_back(Vertex_Out{thing, vertices_in[i].color, vertices_in[i].uv});
 	}
+}
+
+bool ClippingTriangle(const Vertex_Out& v1, const Vertex_Out& v2, const Vertex_Out& v3)
+{
+	return false;
 }
 
 bool Renderer::SaveBufferToImage() const

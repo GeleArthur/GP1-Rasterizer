@@ -152,7 +152,6 @@ namespace dae {
 
 	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float zn, float zf)
 	{
-		//TODO W3
 		return {
 			{1/(aspect*fov),0,0,0},
 			{0,1/fov,0,0},
