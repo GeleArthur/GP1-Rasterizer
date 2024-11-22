@@ -12,6 +12,7 @@
 //Project includes
 #include "Timer.h"
 #include "Renderer.h"
+#include "../../build/project/Vector.h"
 
 using namespace dae;
 
@@ -48,6 +49,7 @@ int main(int argc, char* args[])
 
 	//Start loop
 	pTimer->Start();
+
 
 	// Start Benchmark
 	// TODO pTimer->StartBenchmark();

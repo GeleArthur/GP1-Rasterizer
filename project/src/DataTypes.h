@@ -32,11 +32,20 @@ namespace dae
 
 	struct Mesh
 	{
+		Mesh(std::vector<Vertex>&& tVertices, std::vector<uint32_t>&& indices, const PrimitiveTopology primitive_topology, const Matrix& world_matrix):
+			vertices(std::move(tVertices)),
+			indices(std::move(indices)),
+			primitiveTopology(primitive_topology),
+			worldMatrix(world_matrix),
+			vertices_out(std::vector<Vertex_Out>(vertices.size()))
+		{
+		}
+		
 		std::vector<Vertex> vertices{};
 		std::vector<uint32_t> indices{};
 		PrimitiveTopology primitiveTopology{ PrimitiveTopology::TriangleStrip };
-
-		std::vector<Vertex_Out> vertices_out{};
 		Matrix worldMatrix{};
+		
+		std::vector<Vertex_Out> vertices_out{};
 	};
 }

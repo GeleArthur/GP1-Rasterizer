@@ -22,47 +22,94 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Create Buffers
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
 	m_pBackBuffer = SDL_CreateRGBSurface(0, m_Width, m_Height, 32, 0, 0, 0, 0);
-	m_pBackBufferPixels = (uint32_t*)m_pBackBuffer->pixels;
-
-	//m_pDepthBufferPixels = new float[m_Width * m_Height];
-
+	m_pBackBufferPixels = static_cast<uint32_t*>(m_pBackBuffer->pixels);
+	depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
+	
 	//Initialize Camera
 	m_Camera.Initialize(60.f, {.0f, .0f, -10.f});
 
 
-	m_Meshes.push_back(std::make_unique<Mesh>(Mesh{
+	// m_Meshes.push_back(std::make_unique<Mesh>(
+	// 	std::vector<Vertex>{
+	// 		{{-3, 3, -2}, {colors::White}, {0,0} },
+	// 		{{0, 3, -2}, {colors::White}, {0.5,0}},
+	// 		{{3, 3, -2}, {colors::White}, {1,0}},
+	// 		{{-3, 0, -2}, {colors::White}, {0,0.5}},
+	// 		{{0, 0, -2}, {colors::White}, {0.5, 0.5}},
+	// 		{{3, 0, -2}, {colors::White}, {1, 0.5}},
+	// 		{{-3, -3, -2}, {colors::White}, {0,1}},
+	// 		{{0, -3, -2}, {colors::White}, {0.5,1}},
+	// 		{{3, -3, -2}, {colors::White}, {1,1}},
+	// 	},
+	// 	std::vector<uint32_t>{
+	// 		3, 0, 4, 1, 5, 2,
+	// 		2, 6,
+	// 		6, 3, 7, 4, 8, 5,
+	// 	},
+	// 	PrimitiveTopology::TriangleStrip,
+	// 	Matrix{
+	// 		{1,0,0,0},
+	// 		{0,1,0,0},
+	// 		{0,0,1,0},
+	// 		{0,0,0,1},
+	// 	}
+	// ));
+	//
+	// m_Meshes.push_back(std::make_unique<Mesh>(
+	// 	std::vector<Vertex>{
+	// 		{{-3, 3, -2}, {colors::White}, {0,0} },
+	// 		{{0, 3, -2}, {colors::White}, {0.5,0}},
+	// 		{{3, 3, -2}, {colors::White}, {1,0}},
+	// 		{{-3, 0, -2}, {colors::White}, {0,0.5}},
+	// 		{{0, 0, -2}, {colors::White}, {0.5, 0.5}},
+	// 		{{3, 0, -2}, {colors::White}, {1, 0.5}},
+	// 		{{-3, -3, -2}, {colors::White}, {0,1}},
+	// 		{{0, -3, -2}, {colors::White}, {0.5,1}},
+	// 		{{3, -3, -2}, {colors::White}, {1,1}},
+	// 	},
+	// 	std::vector<uint32_t>{
+	// 		3,0,4, 
+	// 		0,1,4, 
+	// 		4,1,5, 
+	// 		1,2,5, 
+	// 		6,3,7, 
+	// 		3,4,7, 
+	// 		7,4,8, 
+	// 		4,5,8 
+	// 	},
+	// 	PrimitiveTopology::TriangleList,
+	// 	Matrix{
+	// 		{1,0,0,0},
+	// 		{0,1,0,0},
+	// 		{0,0,1,0},
+	// 		{10,0,1,1},
+	// 	}
+	// ));
+
+		m_Meshes.push_back(std::make_unique<Mesh>(
 		std::vector<Vertex>{
-			{{-3, 3, -2}, {colors::White}, {0,0} },
+			{{0, 0, -2}, {colors::White}, {0,0} },
 			{{0, 3, -2}, {colors::White}, {0.5,0}},
 			{{3, 3, -2}, {colors::White}, {1,0}},
-			{{-3, 0, -2}, {colors::White}, {0,0.5}},
-			{{0, 0, -2}, {colors::White}, {0.5, 0.5}},
-			{{3, 0, -2}, {colors::White}, {1, 0.5}},
-			{{-3, -3, -2}, {colors::White}, {0,1}},
-			{{0, -3, -2}, {colors::White}, {0.5,1}},
-			{{3, -3, -2}, {colors::White}, {1,1}},
 		},
 		std::vector<uint32_t>{
-			3, 0, 4, 1, 5, 2,
-			2, 6,
-			6, 3, 7, 4, 8, 5,
+			0,1,2
 		},
-		PrimitiveTopology::TriangleStrip,
-		{},
-		{
+		PrimitiveTopology::TriangleList,
+		Matrix{
 			{1,0,0,0},
 			{0,1,0,0},
 			{0,0,1,0},
-			{0,0,0,1},
+			{10,0,1,1},
 		}
-	}));
+	));
+
 
 	m_Texture = Texture::LoadFromFile("resources/uv_grid_2.png");
 }
 
 Renderer::~Renderer()
 {
-	//delete[] m_pDepthBufferPixels;
 }
 
 void Renderer::Update(Timer* pTimer)
@@ -74,16 +121,34 @@ void Renderer::Render()
 {
 	//@START
 	//Lock BackBuffer
-
 	SDL_FillRect(m_pBackBuffer, nullptr, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 	SDL_LockSurface(m_pBackBuffer);
 
-	for (auto& mesh : m_Meshes)
+	std::ranges::fill(depthBuffer, std::numeric_limits<float>::max());
+	
+	for (const std::unique_ptr<Mesh>& mesh : m_Meshes)
 	{
-		std::vector depthBuffer(m_Height * m_Width, std::numeric_limits<float>::max());
-		
 		mesh->vertices_out.clear();
-		VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
+		//VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
+		float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+		Matrix bad = Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 1, 100);
+		Matrix worldViewProjectionMatrix = m_Camera.invViewMatrix * bad;
+
+		for (int i{}; i < mesh->vertices.size(); ++i)
+		{
+			Vector4 thing = worldViewProjectionMatrix.TransformPoint(Vector4{ mesh->vertices[i].position, 0 });
+
+			thing.x = thing.x / thing.w;
+			thing.y = thing.y / thing.w;
+			//thing.z = thing.z / thing.w;
+			// thing.w = thing.w;
+
+			mesh->vertices_out.push_back(Vertex_Out{ thing, mesh->vertices[i].color, mesh->vertices[i].uv });
+		}
+
+
+		std::vector<Vertex>::iterator yea = mesh->vertices.begin();
+
 		
 		switch (mesh->primitiveTopology)
 		{
@@ -108,6 +173,7 @@ void Renderer::Render()
 				Vertex_Out* vertex0;
 				Vertex_Out* vertex1;
 				Vertex_Out* vertex2;
+
 				
 				if( !(i & 1) ) // isEven
 				{
@@ -137,6 +203,7 @@ void Renderer::Render()
 	SDL_UpdateWindowSurface(m_pWindow);
 }
 
+
 void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer, const Texture& texture)
 {
 		Vector2 v0 = {(vertex0.position.x + 1) / 2.0f * m_Width, (1 - vertex0.position.y) / 2.0f * m_Height};
@@ -156,6 +223,17 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 
 				ColorRGB finalColor{0, 0, 0};
 
+				if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_T])
+				{
+					int mousex;
+					int mousey;
+					SDL_GetMouseState(&mousex, &mousey);
+					if (px == mousex && py == mousey)
+					{
+						__debugbreak();
+					}
+				}
+
 				// (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
 				float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
@@ -169,11 +247,11 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 					distV1 = (distV1 / area);
 					distV2 = (distV2 / area);
 
-					const float depth = 1.0f/(1.0f/vertex0.position.z * distV0 + 1.0f/vertex1.position.z * distV1 + 1.0f/vertex2.position.z * distV2);
+					//const float depth = 1.0f/(1.0f/vertex0.position.z * distV0 + 1.0f/vertex1.position.z * distV1 + 1.0f/vertex2.position.z * distV2);
 
-					if (depth_buffer[px + (py * m_Width)] >= depth)
+					//if (depth_buffer[px + (py * m_Width)] >= depth)
 					{
-						depth_buffer[px + (py * m_Width)] = depth;
+						//depth_buffer[px + (py * m_Width)] = depth;
 						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
 						Vector2 uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
 						
@@ -181,7 +259,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 						
 						//finalColor = (vertex0.color * distV0 + vertex1.color * distV1 + vertex2.color * distV2);
 						finalColor = texture.Sample(uv);
-						finalColor = ColorRGB{depthW,depthW,depthW};
+						//finalColor = ColorRGB{depthW,depthW,depthW};
 						//Update Color in Buffer
 						finalColor.MaxToOne();
 
@@ -197,8 +275,8 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
 {
-	float aspect = float(m_Width) / float(m_Height);
-	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
+	float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 10.0f, 100.0f);
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{

@@ -13,10 +13,9 @@ namespace dae {
 
 	Vector2::Vector2(float _x, float _y) : x(_x), y(_y) {}
 
-
 	Vector2::Vector2(const Vector2& from, const Vector2& to) : x(to.x - from.x), y(to.y - from.y) {}
 
-	float Vector2::Magnitude() const
+	 float Vector2::Magnitude() const
 	{
 		return sqrtf(x * x + y * y);
 	}
@@ -46,6 +45,11 @@ namespace dae {
 		return v1.x * v2.x + v1.y * v2.y;
 	}
 
+	float Vector2::Cross(const Vector2& v1, const Vector2& v2)
+	{
+		return v1.x * v2.y - v1.y * v2.x;
+	}
+
 #pragma region Operator Overloads
 	Vector2 Vector2::operator*(float scale) const
 	{
@@ -61,8 +65,6 @@ namespace dae {
 	{
 		return { x + v.x, y + v.y };
 	}
-
-
 
 	Vector2 Vector2::operator-() const
 	{

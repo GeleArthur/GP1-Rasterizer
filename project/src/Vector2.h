@@ -7,7 +7,7 @@ namespace dae
 		float x{};
 		float y{};
 
-		Vector2() = default;
+		inline Vector2() = default;
 		Vector2(float _x, float _y);
 		Vector2(const Vector2& from, const Vector2& to);
 
@@ -18,20 +18,14 @@ namespace dae
 
 		static float Dot(const Vector2& v1, const Vector2& v2);
 		//static float Cross(const Vector2& v1, const Vector2& v2);
-		inline static float Cross(const Vector2& v1, const Vector2& v2)
-		{
-			return v1.x * v2.y - v1.y * v2.x;
-		}
+		static float Cross(const Vector2& v1, const Vector2& v2);
 
 		//Member Operators
 		Vector2 operator*(float scale) const;
 		Vector2 operator/(float scale) const;
 		Vector2 operator+(const Vector2& v) const;
 		//Vector2 operator-(const Vector2& v) const;
-		inline Vector2 operator-(const Vector2& v) const
-		{
-			return { x - v.x, y - v.y };
-		}
+		Vector2 operator-(const Vector2& v) const;
 
 		Vector2 operator-() const;
 		//Vector2& operator-();
@@ -48,6 +42,11 @@ namespace dae
 		static const Vector2 UnitY;
 		static const Vector2 Zero;
 	};
+
+	inline Vector2 Vector2::operator-(const Vector2& v) const
+	{
+		return { x - v.x, y - v.y };
+	}
 
 	//Global Operators
 	inline Vector2 operator*(float scale, const Vector2& v)

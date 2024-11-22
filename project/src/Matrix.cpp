@@ -150,17 +150,16 @@ namespace dae {
 		return {};
 	}
 
-	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float zn, float zf)
+	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float near, float far)
 	{
 		return {
-			{1/(aspect*fov),0,0,0},
-			{0,1/fov,0,0},
-			{0,0,(zf)/(zf-zn),1},
-			{0,0,-(zf*zn)/(zf-zn),0}
+			{1.0f/(aspect*fov),0       ,0                     ,0},
+			{0                ,1.0f/fov,0                     ,0},
+			{0                ,0       ,far/(far-near)        ,1.0f},
+			{0                ,0       ,(- (far * near)) / (far - near),0}
 		};
 
 
-		return {};
 	}
 
 	Vector3 Matrix::GetAxisX() const

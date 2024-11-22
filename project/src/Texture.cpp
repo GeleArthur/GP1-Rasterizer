@@ -26,7 +26,6 @@ namespace dae
 	{
 		SDL_Surface* pSurface = IMG_Load(path.c_str());
 		return std::unique_ptr<Texture>(new Texture(pSurface));
-		//return std::make_unique<Texture>(pSurface);
 	}
 
 	ColorRGB Texture::Sample(const Vector2& uv) const

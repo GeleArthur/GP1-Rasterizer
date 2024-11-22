@@ -42,8 +42,7 @@ namespace dae
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
-
-		//float* m_pDepthBufferPixels{};
+		std::vector<float> depthBuffer{};
 
 		std::vector<std::unique_ptr<Mesh>>  m_Meshes;
 		std::unique_ptr<Texture> m_Texture;
@@ -52,5 +51,8 @@ namespace dae
 
 		int m_Width{};
 		int m_Height{};
+
+		bool m_DEBUG_MoveMouse{};
+
 	};
 }
