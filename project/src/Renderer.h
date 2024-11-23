@@ -36,6 +36,8 @@ namespace dae
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const;
 
+		bool renderDepth; // TODO: Lets not
+
 	private:
 		SDL_Window* m_pWindow{};
 

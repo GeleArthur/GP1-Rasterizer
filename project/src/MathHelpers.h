@@ -57,4 +57,9 @@ namespace dae
 		if (v > 1.f) return 1.f;
 		return v;
 	}
+
+	inline float Remap(float value, float start1, float stop1, float start2, float stop2)
+	{
+		return start2 + (value - start1) * (stop2 - start2) / (stop1 - start1);
+	}
 }

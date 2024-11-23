@@ -26,7 +26,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
 	
 	//Initialize Camera
-	m_Camera.Initialize(60.f, {.0f, .0f, -10.f});
+	m_Camera.Initialize(60.f, {.0f, 5.0f, -30.f});
 
 
 	// m_Meshes.push_back(std::make_unique<Mesh>(
@@ -86,26 +86,43 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	// 	}
 	// ));
 
-		m_Meshes.push_back(std::make_unique<Mesh>(
-		std::vector<Vertex>{
-			{{0, 0, -2}, {colors::White}, {0,0} },
-			{{0, 3, -2}, {colors::White}, {0.5,0}},
-			{{3, 3, -2}, {colors::White}, {1,0}},
-		},
-		std::vector<uint32_t>{
-			0,1,2
-		},
-		PrimitiveTopology::TriangleList,
-		Matrix{
+	std::vector<Vertex> putput;
+	std::vector<uint32_t> putputince;
+
+	Utils::ParseOBJ("resources/tuktuk.obj", putput, putputince);
+
+	Matrix pain{
 			{1,0,0,0},
 			{0,1,0,0},
 			{0,0,1,0},
 			{10,0,1,1},
-		}
-	));
+	};
 
 
-	m_Texture = Texture::LoadFromFile("resources/uv_grid_2.png");
+	m_Meshes.push_back(std::make_unique<Mesh>(Mesh{
+		std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
+	}));
+
+	// 	m_Meshes.push_back(std::make_unique<Mesh>(
+	// 	std::vector<Vertex>{
+	// 		{{0, 0, -2}, {colors::White}, {0,0} },
+	// 		{{0, 3, -2}, {colors::White}, {0.5,0}},
+	// 		{{3, 3, -2}, {colors::White}, {1,0}},
+	// 	},
+	// 	std::vector<uint32_t>{
+	// 		0,1,2
+	// 	},
+	// 	PrimitiveTopology::TriangleList,
+	// 	Matrix{
+	// 		{1,0,0,0},
+	// 		{0,1,0,0},
+	// 		{0,0,1,0},
+	// 		{10,0,1,1},
+	// 	}
+	// ));
+
+
+	m_Texture = Texture::LoadFromFile("resources/tuktuk.png");
 }
 
 Renderer::~Renderer()
@@ -129,26 +146,7 @@ void Renderer::Render()
 	for (const std::unique_ptr<Mesh>& mesh : m_Meshes)
 	{
 		mesh->vertices_out.clear();
-		//VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
-		float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
-		Matrix bad = Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 1, 100);
-		Matrix worldViewProjectionMatrix = m_Camera.invViewMatrix * bad;
-
-		for (int i{}; i < mesh->vertices.size(); ++i)
-		{
-			Vector4 thing = worldViewProjectionMatrix.TransformPoint(Vector4{ mesh->vertices[i].position, 0 });
-
-			thing.x = thing.x / thing.w;
-			thing.y = thing.y / thing.w;
-			//thing.z = thing.z / thing.w;
-			// thing.w = thing.w;
-
-			mesh->vertices_out.push_back(Vertex_Out{ thing, mesh->vertices[i].color, mesh->vertices[i].uv });
-		}
-
-
-		std::vector<Vertex>::iterator yea = mesh->vertices.begin();
-
+		VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
 		
 		switch (mesh->primitiveTopology)
 		{
@@ -247,19 +245,29 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 					distV1 = (distV1 / area);
 					distV2 = (distV2 / area);
 
-					//const float depth = 1.0f/(1.0f/vertex0.position.z * distV0 + 1.0f/vertex1.position.z * distV1 + 1.0f/vertex2.position.z * distV2);
+					const float depth = 1.0f/(1.0f/vertex0.position.z * distV0 + 1.0f/vertex1.position.z * distV1 + 1.0f/vertex2.position.z * distV2);
 
-					//if (depth_buffer[px + (py * m_Width)] >= depth)
+					if (depth > 1 || depth < 0)
 					{
-						//depth_buffer[px + (py * m_Width)] = depth;
+						continue;
+					}
+
+					if (depth_buffer[px + (py * m_Width)] >= depth)
+					{
+						depth_buffer[px + (py * m_Width)] = depth;
+
 						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
 						Vector2 uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
-						
-						//Vector2 uv = (vertex0.uv * distV0 + vertex1.uv * distV1 + vertex2.uv * distV2);
-						
-						//finalColor = (vertex0.color * distV0 + vertex1.color * distV1 + vertex2.color * distV2);
-						finalColor = texture.Sample(uv);
-						//finalColor = ColorRGB{depthW,depthW,depthW};
+
+						if (!renderDepth)
+						{
+							finalColor = texture.Sample(uv);
+						}else
+						{
+							float depthWRemapped = Remap(depth, 0.995f, 1.0f, 0.0f, 1.0f);
+							finalColor = ColorRGB{ depthWRemapped,depthWRemapped,depthWRemapped };
+						}
+
 						//Update Color in Buffer
 						finalColor.MaxToOne();
 
@@ -276,7 +284,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
 {
 	float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
-	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, 10.0f, 100.0f);
+	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
