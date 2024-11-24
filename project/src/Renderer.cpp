@@ -220,8 +220,8 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 			{
 				Vector<2,float> pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
 
-				ColorRGB finalColor{0, 0, 0};
 
+				#if DEBUG
 				if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_T])
 				{
 					int mousex;
@@ -232,6 +232,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 						__debugbreak();
 					}
 				}
+				#endif
 
 				// (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
@@ -260,6 +261,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
 						Vector<2,float> uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
 
+						ColorRGB finalColor{0, 0, 0};
 						if (!renderDepth)
 						{
 							finalColor = texture.Sample(uv);
