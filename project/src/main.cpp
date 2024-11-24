@@ -12,7 +12,7 @@
 //Project includes
 #include "Timer.h"
 #include "Renderer.h"
-#include "../../build/project/Vector.h"
+#include "Vector.h"
 
 using namespace dae;
 
@@ -27,7 +27,7 @@ int main(int argc, char* args[])
 	//Unreferenced parameters
 	(void)argc;
 	(void)args;
-
+	
 	//Create window + surfaces
 	SDL_Init(SDL_INIT_VIDEO);
 

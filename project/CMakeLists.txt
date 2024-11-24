@@ -28,6 +28,7 @@ set(SOURCES
     "src/Vector3.h"
     "src/Vector4.h"
     "src/Utils.h"
+    "src/Vector.h"
 )
 
 # Create the executable

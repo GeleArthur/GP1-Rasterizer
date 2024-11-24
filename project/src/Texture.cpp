@@ -2,8 +2,9 @@
 
 #include <memory>
 
-#include "Vector2.h"
 #include <SDL_image.h>
+
+#include "Vector.h"
 
 namespace dae
 {
@@ -28,10 +29,10 @@ namespace dae
 		return std::unique_ptr<Texture>(new Texture(pSurface));
 	}
 
-	ColorRGB Texture::Sample(const Vector2& uv) const
+	ColorRGB Texture::Sample(const Vector<2,float>& uv) const
 	{
 		Uint8 red, green, blue;
-		Vector2 clamped = {std::clamp(uv.x, 0.0f, 1.0f), std::clamp(uv.y, 0.0f, 1.0f)};
+		Vector<2,float> clamped = {std::clamp(uv.x, 0.0f, 1.0f), std::clamp(uv.y, 0.0f, 1.0f)};
 		
 		SDL_GetRGB(m_pSurfacePixels[
 			static_cast<int>(clamped.x * static_cast<float>(m_pSurface->w - 1)) +

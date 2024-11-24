@@ -3,18 +3,17 @@
 #include <SDL_surface.h>
 #include <string>
 #include "ColorRGB.h"
+#include "Vector.h"
 
 namespace dae
 {
-	struct Vector2;
-
 	class Texture
 	{
 	public:
 		~Texture();
 
 		static std::unique_ptr<Texture> LoadFromFile(const std::string& path);
-		ColorRGB Sample(const Vector2& uv) const;
+		ColorRGB Sample(const Vector<2,float>& uv) const;
 
 	private:
 		Texture(SDL_Surface* pSurface);

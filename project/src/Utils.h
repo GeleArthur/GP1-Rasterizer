@@ -26,9 +26,9 @@ namespace dae
 			if (!file)
 				return false;
 
-			std::vector<Vector3> positions{};
-			std::vector<Vector3> normals{};
-			std::vector<Vector2> UVs{};
+			std::vector<Vector<3,float>> positions{};
+			std::vector<Vector<3,float>> normals{};
+			std::vector<Vector<2,float>> UVs{};
 
 			vertices.clear();
 			indices.clear();
@@ -134,20 +134,20 @@ namespace dae
 				uint32_t index1 = indices[size_t(i) + 1];
 				uint32_t index2 = indices[size_t(i) + 2];
 
-				const Vector3& p0 = vertices[index0].position;
-				const Vector3& p1 = vertices[index1].position;
-				const Vector3& p2 = vertices[index2].position;
-				const Vector2& uv0 = vertices[index0].uv;
-				const Vector2& uv1 = vertices[index1].uv;
-				const Vector2& uv2 = vertices[index2].uv;
+				const Vector<3,float>& p0 = vertices[index0].position;
+				const Vector<3,float>& p1 = vertices[index1].position;
+				const Vector<3,float>& p2 = vertices[index2].position;
+				const Vector<2,float>& uv0 = vertices[index0].uv;
+				const Vector<2,float>& uv1 = vertices[index1].uv;
+				const Vector<2,float>& uv2 = vertices[index2].uv;
 
-				const Vector3 edge0 = p1 - p0;
-				const Vector3 edge1 = p2 - p0;
-				const Vector2 diffX = Vector2(uv1.x - uv0.x, uv2.x - uv0.x);
-				const Vector2 diffY = Vector2(uv1.y - uv0.y, uv2.y - uv0.y);
-				float r = 1.f / Vector2::Cross(diffX, diffY);
+				const Vector<3,float> edge0 = p1 - p0;
+				const Vector<3,float> edge1 = p2 - p0;
+				const Vector<2,float> diffX = Vector<2,float>(uv1.x - uv0.x, uv2.x - uv0.x);
+				const Vector<2,float> diffY = Vector<2,float>(uv1.y - uv0.y, uv2.y - uv0.y);
+				float r = 1.f / Vector<2,float>::Cross(diffX, diffY);
 
-				Vector3 tangent = (edge0 * diffY.y - edge1 * diffY.x) * r;
+				Vector<3,float> tangent = (edge0 * diffY.y - edge1 * diffY.x) * r;
 				vertices[index0].tangent += tangent;
 				vertices[index1].tangent += tangent;
 				vertices[index2].tangent += tangent;
@@ -156,7 +156,7 @@ namespace dae
 			//Fix the tangents per vertex now because we accumulated
 			for (auto& v : vertices)
 			{
-				v.tangent = Vector3::Reject(v.tangent, v.normal).Normalized();
+				v.tangent = Vector<3,float>::Reject(v.tangent, v.normal).Normalized();
 
 				if(flipAxisAndWinding)
 				{

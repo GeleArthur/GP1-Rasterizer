@@ -13,7 +13,7 @@ namespace dae
 	{
 		Camera() = default;
 
-		Camera(const Vector3& _origin, float _fovAngle):
+		Camera(const Vector<3,float>& _origin, float _fovAngle):
 			origin{_origin},
 			fovAngle{_fovAngle},
 			nearPlane{0.000001f},
@@ -22,13 +22,13 @@ namespace dae
 		}
 
 
-		Vector3 origin{};
+		Vector<3,float> origin{};
 		float fovAngle{90.f};
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
 
-		Vector3 forward{Vector3::UnitZ};
-		Vector3 up{Vector3::UnitY};
-		Vector3 right{Vector3::UnitX};
+		Vector<3,float> forward{Vector<3,float>::UnitZ};
+		Vector<3,float> up{Vector<3,float>::UnitY};
+		Vector<3,float> right{Vector<3,float>::UnitX};
 
 		float totalPitch{};
 		float totalYaw{};
@@ -39,7 +39,7 @@ namespace dae
 		float nearPlane{};
 		float farPlane{};
 
-		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f}, float _nearPlane = 1.0f, float _farPlane = 1000.f)
+		void Initialize(float _fovAngle = 90.f, Vector<3,float> _origin = {0.f,0.f,0.f}, float _nearPlane = 1.0f, float _farPlane = 1000.f)
 		{
 			fovAngle = _fovAngle;
 			fov = tanf((fovAngle * TO_RADIANS) / 2.f);
@@ -55,8 +55,8 @@ namespace dae
 			//ONB => invViewMatrix
 			//Inverse(ONB) => ViewMatrix
 
-			right = Vector3::Cross(Vector3::UnitY, forward).Normalized();
-			up = Vector3::Cross(forward, right).Normalized();
+			right = Vector<3,float>::Cross(Vector<3,float>::UnitY, forward).Normalized();
+			up = Vector<3,float>::Cross(forward, right).Normalized();
 
 			viewMatrix = Matrix{
 					{right.x,   right.y,   right.z,   0},
@@ -94,7 +94,7 @@ namespace dae
 			int mouseX{}, mouseY{};
 			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
-			Vector3 input;
+			Vector<3,float> input{};
 			if(pKeyboardState[SDL_SCANCODE_W])
 			{
 				input.z += 1;
@@ -125,7 +125,7 @@ namespace dae
 			}
 
 
-			forward = Matrix::CreateRotation(totalPitch, totalYaw, 0).TransformVector(Vector3::UnitZ);
+			forward = Matrix::CreateRotation(totalPitch, totalYaw, 0).TransformVector(Vector<3,float>::UnitZ);
 			forward.Normalize();
 			origin += (forward * input.z + right * input.x) * 5 * deltaTime;
 

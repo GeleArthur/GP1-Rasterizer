@@ -1,58 +1,57 @@
 #pragma once
-#include "Vector3.h"
-#include "Vector4.h"
+#include "Vector.h"
 
 namespace dae {
 	struct Matrix
 	{
 		Matrix() = default;
 		Matrix(
-			const Vector3& xAxis,
-			const Vector3& yAxis,
-			const Vector3& zAxis,
-			const Vector3& t);
+			const Vector<3,float>& xAxis,
+			const Vector<3,float>& yAxis,
+			const Vector<3,float>& zAxis,
+			const Vector<3,float>& t);
 
 		Matrix(
-			const Vector4& xAxis,
-			const Vector4& yAxis,
-			const Vector4& zAxis,
-			const Vector4& t);
+			const Vector<4,float>& xAxis,
+			const Vector<4,float>& yAxis,
+			const Vector<4,float>& zAxis,
+			const Vector<4,float>& t);
 
 		Matrix(const Matrix& m);
 
-		Vector3 TransformVector(const Vector3& v) const;
-		Vector3 TransformVector(float x, float y, float z) const;
-		Vector3 TransformPoint(const Vector3& p) const;
-		Vector3 TransformPoint(float x, float y, float z) const;
+		Vector<3,float> TransformVector(const Vector<3,float>& v) const;
+		Vector<3,float> TransformVector(float x, float y, float z) const;
+		Vector<3,float> TransformPoint(const Vector<3,float>& p) const;
+		Vector<3,float> TransformPoint(float x, float y, float z) const;
 
-		Vector4 TransformPoint(const Vector4& p) const;
-		Vector4 TransformPoint(float x, float y, float z, float w) const;
+		Vector<4,float> TransformPoint(const Vector<4,float>& p) const;
+		Vector<4,float> TransformPoint(float x, float y, float z, float w) const;
 
 		const Matrix& Transpose();
 		const Matrix& Inverse();
 
-		Vector3 GetAxisX() const;
-		Vector3 GetAxisY() const;
-		Vector3 GetAxisZ() const;
-		Vector3 GetTranslation() const;
+		Vector<3,float> GetAxisX() const;
+		Vector<3,float> GetAxisY() const;
+		Vector<3,float> GetAxisZ() const;
+		Vector<3,float> GetTranslation() const;
 
 		static Matrix CreateTranslation(float x, float y, float z);
-		static Matrix CreateTranslation(const Vector3& t);
+		static Matrix CreateTranslation(const Vector<3,float>& t);
 		static Matrix CreateRotationX(float pitch);
 		static Matrix CreateRotationY(float yaw);
 		static Matrix CreateRotationZ(float roll);
 		static Matrix CreateRotation(float pitch, float yaw, float roll);
-		static Matrix CreateRotation(const Vector3& r);
+		static Matrix CreateRotation(const Vector<3,float>& r);
 		static Matrix CreateScale(float sx, float sy, float sz);
-		static Matrix CreateScale(const Vector3& s);
+		static Matrix CreateScale(const Vector<3,float>& s);
 		static Matrix Transpose(const Matrix& m);
 		static Matrix Inverse(const Matrix& m);
 
-		static Matrix CreateLookAtLH(const Vector3& origin, const Vector3& forward, const Vector3& up);
+		static Matrix CreateLookAtLH(const Vector<3,float>& origin, const Vector<3,float>& forward, const Vector<3,float>& up);
 		static Matrix CreatePerspectiveFovLH(float fovy, float aspect, float near, float far);
 
-		Vector4& operator[](int index);
-		Vector4 operator[](int index) const;
+		Vector<4,float>& operator[](int index);
+		Vector<4,float> operator[](int index) const;
 		Matrix operator*(const Matrix& m) const;
 		const Matrix& operator*=(const Matrix& m);
 		bool operator==(const Matrix& m) const;
@@ -60,7 +59,7 @@ namespace dae {
 	private:
 
 		//Row-Major Matrix
-		Vector4 data[4]
+		Vector<4,float> data[4]
 		{
 			{1,0,0,0}, //xAxis
 			{0,1,0,0}, //yAxis

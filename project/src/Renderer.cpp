@@ -10,6 +10,7 @@
 #include "Maths.h"
 #include "Texture.h"
 #include "Utils.h"
+#include "Vector.h"
 
 using namespace dae;
 
@@ -204,9 +205,9 @@ void Renderer::Render()
 
 void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer, const Texture& texture)
 {
-		Vector2 v0 = {(vertex0.position.x + 1) / 2.0f * m_Width, (1 - vertex0.position.y) / 2.0f * m_Height};
-		Vector2 v1 = {(vertex1.position.x + 1) / 2.0f * m_Width, (1 - vertex1.position.y) / 2.0f * m_Height};
-		Vector2 v2 = {(vertex2.position.x + 1) / 2.0f * m_Width, (1 - vertex2.position.y) / 2.0f * m_Height};
+		Vector<2,float> v0 = {(vertex0.position.x + 1) / 2.0f * m_Width, (1 - vertex0.position.y) / 2.0f * m_Height};
+		Vector<2,float> v1 = {(vertex1.position.x + 1) / 2.0f * m_Width, (1 - vertex1.position.y) / 2.0f * m_Height};
+		Vector<2,float> v2 = {(vertex2.position.x + 1) / 2.0f * m_Width, (1 - vertex2.position.y) / 2.0f * m_Height};
 
 		int minX = std::max(0, static_cast<int>(std::min({v0.x, v1.x, v2.x})));
 		int minY = std::max(0, static_cast<int>(std::min({v0.y, v1.y, v2.y})));
@@ -217,7 +218,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 		{
 			for (int py{minY}; py < maxY; ++py)
 			{
-				Vector2 pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
+				Vector<2,float> pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
 
 				ColorRGB finalColor{0, 0, 0};
 
@@ -234,9 +235,9 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 
 				// (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
-				float distV2 = Vector2::Cross(v1 - v0, pixelLocation - v0);
-				float distV0 = Vector2::Cross(v2 - v1, pixelLocation - v1);
-				float distV1 = Vector2::Cross(v0 - v2, pixelLocation - v2);
+				float distV2 = Vector<2,float>::Cross(v1 - v0, pixelLocation - v0);
+				float distV0 = Vector<2,float>::Cross(v2 - v1, pixelLocation - v1);
+				float distV1 = Vector<2,float>::Cross(v0 - v2, pixelLocation - v2);
 
 				if (distV2 >= 0 && distV0 >= 0 && distV1 >= 0)
 				{
@@ -257,14 +258,14 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 						depth_buffer[px + (py * m_Width)] = depth;
 
 						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
-						Vector2 uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
+						Vector<2,float> uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
 
 						if (!renderDepth)
 						{
 							finalColor = texture.Sample(uv);
 						}else
 						{
-							float depthWRemapped = Remap(depth, 0.995f, 1.0f, 0.0f, 1.0f);
+							float depthWRemapped =  Remap(depth, 0.8f, 1.0f, 0.0f, 1.0f);
 							finalColor = ColorRGB{ depthWRemapped,depthWRemapped,depthWRemapped };
 						}
 
@@ -288,7 +289,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
-		Vector4 thing = worldViewProjectionMatrix.TransformPoint(Vector4{ vertices_in[i].position, 1 });
+		Vector<4,float> thing = worldViewProjectionMatrix.TransformPoint(Vector<4,float>{ vertices_in[i].position, 1 });
 
 		thing.x = thing.x / thing.w;
 		thing.y = thing.y / thing.w;
