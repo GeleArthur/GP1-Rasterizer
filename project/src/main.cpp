@@ -72,7 +72,7 @@ int main(int argc, char* args[])
 				if (e.key.keysym.scancode == SDL_SCANCODE_X)
 					takeScreenshot = true;
 				if (e.key.keysym.scancode == SDL_SCANCODE_F4)
-					pRenderer->renderDepth = !pRenderer->renderDepth;
+					pRenderer->ChangeRenderMode();
 				break;
 			}
 		}
@@ -82,7 +82,7 @@ int main(int argc, char* args[])
 
 		//--------- Render ---------
 		pRenderer->Render();
-
+		
 		//--------- Timer ---------
 		pTimer->Update();
 		printTimer += pTimer->GetElapsed();

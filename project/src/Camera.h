@@ -16,8 +16,8 @@ namespace dae
 		Camera(const Vector<3,float>& _origin, float _fovAngle):
 			origin{_origin},
 			fovAngle{_fovAngle},
-			nearPlane{0.000001f},
-			farPlane{1000}
+			nearPlane{1.0f},
+			farPlane{1000.0f}
 		{
 		}
 

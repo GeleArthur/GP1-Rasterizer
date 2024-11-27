@@ -6,16 +6,20 @@
 #include "Renderer.h"
 
 #include <array>
+#include <execution>
 
+#include "BetterPraseObj.h"
 #include "Maths.h"
-#include "Texture.h"
 #include "Utils.h"
 #include "Vector.h"
+#include "Texture.h"
+
 
 using namespace dae;
 
 Renderer::Renderer(SDL_Window* pWindow) :
-	m_pWindow(pWindow)
+	m_pWindow(pWindow),
+	m_CoreCount(std::thread::hardware_concurrency())
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -27,9 +31,13 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
 	
 	//Initialize Camera
-	m_Camera.Initialize(60.f, {.0f, 5.0f, -30.f});
+	m_Camera.Initialize(60.f, {.0f, 0.0f, 0.0f});
+	m_BinnedVertexOut.resize(m_CoreCount);
+	m_CoresIds.resize(m_CoreCount);
+	std::iota(m_CoresIds.begin(), m_CoresIds.end(), 0);
+	
 
-
+	//
 	// m_Meshes.push_back(std::make_unique<Mesh>(
 	// 	std::vector<Vertex>{
 	// 		{{-3, 3, -2}, {colors::White}, {0,0} },
@@ -91,37 +99,36 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	std::vector<uint32_t> putputince;
 
 	Utils::ParseOBJ("resources/tuktuk.obj", putput, putputince);
+	// Utils::BetterParseObj("resources/Boat.obj", putput, putputince);
 
 	Matrix pain{
 			{1,0,0,0},
 			{0,1,0,0},
 			{0,0,1,0},
-			{10,0,1,1},
+			    {0,0,0,1},
 	};
-
-
-	m_Meshes.push_back(std::make_unique<Mesh>(Mesh{
+	
+	m_Meshes.push_back(std::make_unique<Mesh>(
 		std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
-	}));
+	));
 
-	// 	m_Meshes.push_back(std::make_unique<Mesh>(
-	// 	std::vector<Vertex>{
-	// 		{{0, 0, -2}, {colors::White}, {0,0} },
-	// 		{{0, 3, -2}, {colors::White}, {0.5,0}},
-	// 		{{3, 3, -2}, {colors::White}, {1,0}},
-	// 	},
-	// 	std::vector<uint32_t>{
-	// 		0,1,2
-	// 	},
-	// 	PrimitiveTopology::TriangleList,
-	// 	Matrix{
-	// 		{1,0,0,0},
-	// 		{0,1,0,0},
-	// 		{0,0,1,0},
-	// 		{10,0,1,1},
-	// 	}
-	// ));
-
+	m_Meshes.push_back(std::make_unique<Mesh>(
+		std::vector<Vertex>{
+			{{0, 0, 10}, {colors::White}, {0,0} },
+			{{0, 3, 10}, {colors::White}, {0.5,0}},
+			{{3, 3, 10}, {colors::White}, {1,0}},
+		},
+		std::vector<uint32_t>{
+			0,1,2
+		},
+		PrimitiveTopology::TriangleList,
+		Matrix{
+			{1,0,0,0},
+			{0,1,0,0},
+			{0,0,1,0},
+			{0,0,0,1},
+		}
+	));
 
 	m_Texture = Texture::LoadFromFile("resources/tuktuk.png");
 }
@@ -146,34 +153,22 @@ void Renderer::Render()
 	
 	for (const std::unique_ptr<Mesh>& mesh : m_Meshes)
 	{
-		mesh->vertices_out.clear();
-		VertexTransformationFunction(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
+		VertexStage(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
 		
-		switch (mesh->primitiveTopology)
+		for (int i = 0; i < (mesh->primitiveTopology == PrimitiveTopology::TriangleList ? mesh->indices.size() : mesh->indices.size()-2); i += mesh->primitiveTopology == PrimitiveTopology::TriangleList ? 3: 1)
 		{
-		case PrimitiveTopology::TriangleList:
-			for (int i = 0; i < mesh->indices.size(); i+=3 )
+			const Vertex_Out* vertex0{};
+			const Vertex_Out* vertex1{};
+			const Vertex_Out* vertex2{};
+			
+			switch (mesh->primitiveTopology)
 			{
-				const Vertex_Out& vertex0 = mesh->vertices_out[mesh->indices[i]];
-				const Vertex_Out& vertex1 = mesh->vertices_out[mesh->indices[i+1]];
-				const Vertex_Out& vertex2 = mesh->vertices_out[mesh->indices[i+2]];
-
-				RenderPixels(vertex0, vertex1, vertex2, depthBuffer, *m_Texture);
-			}
-			break;
-		case PrimitiveTopology::TriangleStrip:
-			for (int i = 0; i < mesh->indices.size()-2; ++i )
-			{
-				if(mesh->indices[i] == mesh->indices[i+1] || mesh->indices[i+1] == mesh->indices[i+2])
-				{
-					continue;
-				}
-				
-				Vertex_Out* vertex0;
-				Vertex_Out* vertex1;
-				Vertex_Out* vertex2;
-
-				
+			case PrimitiveTopology::TriangleList:
+				vertex0 = &mesh->vertices_out[mesh->indices[i]];
+				vertex1 = &mesh->vertices_out[mesh->indices[i+1]];
+				vertex2 = &mesh->vertices_out[mesh->indices[i+2]];
+				break;
+			case PrimitiveTopology::TriangleStrip:
 				if( !(i & 1) ) // isEven
 				{
 					vertex0 = &mesh->vertices_out[mesh->indices[i]];
@@ -186,10 +181,13 @@ void Renderer::Render()
 					vertex2 = &mesh->vertices_out[mesh->indices[i+1]];
 					vertex1 = &mesh->vertices_out[mesh->indices[i+2]];
 				}
-
-				RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer, *m_Texture);
+				break;
 			}
-			break;
+
+			if (FrustemCulling(vertex0->position,vertex1->position,vertex2->position)) continue;
+
+			RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer, *m_Texture);
+
 		}
 
 	}
@@ -219,9 +217,8 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 			for (int py{minY}; py < maxY; ++py)
 			{
 				Vector<2,float> pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
-
-
-				#if DEBUG
+				
+				// #if DEBUG
 				if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_T])
 				{
 					int mousex;
@@ -232,7 +229,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 						__debugbreak();
 					}
 				}
-				#endif
+				// #endif
 
 				// (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
@@ -257,22 +254,23 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 					if (depth_buffer[px + (py * m_Width)] >= depth)
 					{
 						depth_buffer[px + (py * m_Width)] = depth;
-
+						
 						const float depthW = 1.0f/(1.0f/vertex0.position.w * distV0 + 1.0f/vertex1.position.w * distV1 + 1.0f/vertex2.position.w * distV2);
 						Vector<2,float> uv = (vertex0.uv/vertex0.position.w * distV0 + vertex1.uv/vertex1.position.w * distV1 + vertex2.uv/vertex2.position.w * distV2)*depthW;
 
 						ColorRGB finalColor{0, 0, 0};
-						if (!renderDepth)
+						if (!m_RenderDepth)
 						{
 							finalColor = texture.Sample(uv);
 						}else
 						{
-							float depthWRemapped =  Remap(depth, 0.8f, 1.0f, 0.0f, 1.0f);
+							float depthWRemapped =  Remap(depth, 0.985f, 1, 0.0f, 1.0f) ;
+							
 							finalColor = ColorRGB{ depthWRemapped,depthWRemapped,depthWRemapped };
 						}
 
 						//Update Color in Buffer
-						finalColor.MaxToOne();
+						//finalColor.MaxToOne();
 
 						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
 							static_cast<uint8_t>(finalColor.r * 255),
@@ -284,26 +282,60 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
 		}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
+void Renderer::VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const
 {
-	float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
-	Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
-
-	for (int i{}; i < vertices_in.size(); ++i)
+	const float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+	auto projection = Matrix::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
+	const Matrix worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * projection;
+	
+	std::transform(std::execution::seq, vertices_in.cbegin(), vertices_in.cend(), vertices_out.begin(), [&](const Vertex& v)
 	{
-		Vector<4,float> thing = worldViewProjectionMatrix.TransformPoint(Vector<4,float>{ vertices_in[i].position, 1 });
-
+		Vector<4,float> thing = worldViewProjectionMatrix.TransformPoint(Vector<4,float>{ v.position, 1 });
+		
 		thing.x = thing.x / thing.w;
 		thing.y = thing.y / thing.w;
 		thing.z = thing.z / thing.w;
-		// thing.w = thing.w;
+
 		
-		vertices_out.push_back(Vertex_Out{thing, vertices_in[i].color, vertices_in[i].uv});
+		return Vertex_Out{thing, v.color, v.uv};
+	} );
+}
+
+void Renderer::ChangeRenderMode()
+{
+	static ShadingMode mode;
+	
+	switch (mode)
+	{
+	case ShadingMode::texture:
+		mode = ShadingMode::depthBuffer;
+		m_RenderDepth = false;
+		break;
+	case ShadingMode::depthBuffer:
+		mode = ShadingMode::texture;
+		m_RenderDepth = true;
+		break;
 	}
 }
 
-bool ClippingTriangle(const Vertex_Out& v1, const Vertex_Out& v2, const Vertex_Out& v3)
+ColorRGB Renderer::LambertBRDF()
 {
+	return {0,0,0};
+}
+
+bool Renderer::FrustemCulling(const Vector<3,float>& v0, const Vector<3,float>& v1, const Vector<3,float>& v2) const
+{
+	if (CheckInFrustum(v0)) return true;
+	if (CheckInFrustum(v1)) return true;
+	if (CheckInFrustum(v2)) return true;
+	return false;
+}
+
+bool Renderer::CheckInFrustum(const Vector<3,float>& v) const
+{
+	if (v.x < -1 || v.x > 1) return true;
+	if (v.y < -1 || v.y > 1) return true;
+	if (v.z < 0 || v.z > 1) return true;
 	return false;
 }
 

@@ -20,9 +20,9 @@ namespace dae
 		Vector<4,float> position{};
 		ColorRGB color{ colors::White };
 		Vector<2,float> uv{};
-		//Vector<3,float> normal{};
-		//Vector<3,float> tangent{};
-		//Vector<3,float> viewDirection{};
+		Vector<3,float> normal{};
+		Vector<3,float> tangent{};
+		Vector<3,float> viewDirection{};
 	};
 
 	enum class PrimitiveTopology
