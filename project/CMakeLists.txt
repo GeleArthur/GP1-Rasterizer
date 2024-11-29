@@ -41,9 +41,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::S
 SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/PROFILE")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-        "${PROJECT_SOURCE_DIR}/project/Resources"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources"
+   COMMAND ${CMAKE_COMMAND} -E create_symlink
+       "${PROJECT_SOURCE_DIR}/project/Resources"
+       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources"
 )
 
 

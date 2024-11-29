@@ -33,8 +33,8 @@ namespace dae
 		float totalPitch{};
 		float totalYaw{};
 
-		Matrix invViewMatrix{};
-		Matrix viewMatrix{};
+		Matrix<float> invViewMatrix{};
+		Matrix<float> viewMatrix{};
 
 		float nearPlane{};
 		float farPlane{};
@@ -58,7 +58,7 @@ namespace dae
 			right = Vector<3,float>::Cross(Vector<3,float>::UnitY, forward).Normalized();
 			up = Vector<3,float>::Cross(forward, right).Normalized();
 
-			viewMatrix = Matrix{
+			viewMatrix = Matrix<float>{
 					{right.x,   right.y,   right.z,   0},
 					{up.x,	    up.y,      up.z,      0},
 					{forward.x, forward.y, forward.z, 0},
@@ -125,7 +125,7 @@ namespace dae
 			}
 
 
-			forward = Matrix::CreateRotation(totalPitch, totalYaw, 0).TransformVector(Vector<3,float>::UnitZ);
+			forward = Matrix<float>::CreateRotation(totalPitch, totalYaw, 0).TransformVector(Vector<3,float>::UnitZ);
 			forward.Normalize();
 			origin += (forward * input.z + right * input.x) * 5 * deltaTime;
 

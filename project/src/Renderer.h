@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Camera.h"
+#include "DataTypes.h"
 
 struct SDL_Window;
 struct SDL_Surface;
@@ -21,7 +22,8 @@ namespace dae
 	enum class ShadingMode
 	{
 		texture,
-		depthBuffer
+		depthBuffer,
+		modelNormals
 	};
 
 	class Renderer final
@@ -42,8 +44,9 @@ namespace dae
 		bool SaveBufferToImage() const;
 		bool FrustemCulling(const Vector<3,float>& v0, const Vector<3,float>& v1, const Vector<3,float>& v2) const;
 		bool CheckInFrustum(const Vector<3, float>& v) const;
+		ColorRGB FragmentShaderShowNormals();
 
-		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& world_matrix) const;
+		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix<float>& world_matrix) const;
 
 		void ChangeRenderMode();
 		ColorRGB LambertBRDF();
@@ -72,7 +75,7 @@ namespace dae
 		int m_Height{};
 
 		bool m_DEBUG_MoveMouse{};
-		bool m_RenderDepth{};
+		ShadingMode m_ShadingMode{};
 
 	};
 }

@@ -33,7 +33,7 @@ namespace dae
 
 	struct Mesh
 	{
-		Mesh(std::vector<Vertex>&& tVertices, std::vector<uint32_t>&& indices, const PrimitiveTopology primitive_topology, const Matrix& world_matrix):
+		Mesh(std::vector<Vertex>&& tVertices, std::vector<uint32_t>&& indices, const PrimitiveTopology primitive_topology, const Matrix<float>& world_matrix):
 			vertices(std::move(tVertices)),
 			indices(std::move(indices)),
 			primitiveTopology(primitive_topology),
@@ -45,8 +45,9 @@ namespace dae
 		std::vector<Vertex> vertices{};
 		std::vector<uint32_t> indices{};
 		PrimitiveTopology primitiveTopology{ PrimitiveTopology::TriangleStrip };
-		Matrix worldMatrix{};
+		Matrix<float> worldMatrix{};
 		
 		std::vector<Vertex_Out> vertices_out{};
+		std::vector<Vertex_Out> vertices_clipped{};
 	};
 }
