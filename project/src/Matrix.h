@@ -7,7 +7,7 @@ namespace dae {
 	{
 		Matrix() = default;
 
-		Matrix(
+		explicit  Matrix(
 			const Vector<3, T>& xAxis,
 			const Vector<3, T>& yAxis,
 			const Vector<3, T>& zAxis,
@@ -19,7 +19,7 @@ namespace dae {
 				{t, 1}}
 		{}
 		
-		Matrix(
+		explicit  Matrix(
 			const Vector<4,T>& xAxis,
 			const Vector<4,T>& yAxis,
 			const Vector<4,T>& zAxis,

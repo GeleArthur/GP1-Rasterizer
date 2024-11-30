@@ -279,7 +279,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                     Vector<3, float> viewDirection = (vertex0.viewDirection / vertex0.position.w * distV0 + vertex1.viewDirection / vertex1.position.w * distV1 + vertex2.viewDirection / vertex2.position.w * distV2) * depthW;
 
                     ColorRGB finalColor;
-
+                    
                     if (m_RenderDepth)
                     {
                         finalColor = ColorRGB{Remap01(depth, 0.8f, 1.0f)};
@@ -298,8 +298,6 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                             7.0f,
                             25.0f);
                     }
-                    
-
                     
                     //Update Color in Buffer
                     finalColor.MaxToOne();
@@ -340,37 +338,45 @@ void Renderer::VertexStage(const std::vector<Vertex>& vertices_in, std::vector<V
        });
 }
 
-void Renderer::ChangeRenderMode()
+void Renderer::ChangeShadingMode()
 {
     switch (m_ShadingMode)
     {
-    case ShadingMode::texture:
-        m_ShadingMode = ShadingMode::depthBuffer;
-        std::cout << "depth" << '\n';
+    case ShadingMode::observed_area:
+        m_ShadingMode = ShadingMode::diffuse;
+        std::cout << "diffuse" << '\n'; 
         break;
-    case ShadingMode::depthBuffer:
-        m_ShadingMode = ShadingMode::modelNormals;
-        std::cout << "normals" << '\n';
+    case ShadingMode::diffuse:
+        m_ShadingMode = ShadingMode::specular;
+        std::cout << "specular" << '\n'; 
         break;
-    case ShadingMode::modelNormals:
-        m_ShadingMode = ShadingMode::tangent;
-        std::cout << "tangent" << '\n';
+    case ShadingMode::specular:
+        m_ShadingMode = ShadingMode::combind;
+        std::cout << "combind" << '\n'; 
         break;
-    case ShadingMode::tangent:
-        m_ShadingMode = ShadingMode::texture;
-        std::cout << "texture" << '\n';
+    case ShadingMode::combind:
+        m_ShadingMode = ShadingMode::observed_area;
+        std::cout << "observed_area" << '\n'; 
         break;
     }
 }
 
 void Renderer::ToggleRotation()
 {
+    std::cout << "Toggle Rotation" << '\n';
     m_Rotating = !m_Rotating;
 }
 
 void Renderer::ToggleNormalMaps()
 {
+    std::cout << "Toggle NormalMaps" << '\n';
     m_UseNormalMaps = !m_UseNormalMaps;
+}
+
+void Renderer::ToggleDepthRendering()
+{
+    std::cout << "Toggle DepthRendering" << '\n';
+    m_RenderDepth = !m_RenderDepth;
 }
 
 Camera& Renderer::GetCamera()
@@ -396,38 +402,50 @@ bool Renderer::CheckInFrustum(const Vector<3, float>& v) const
 
 ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseReflectance, float shininess)
 {
-
     ColorRGB finalColor;
+
+    Vector<3, float> normal;
+    if (m_UseNormalMaps)
+    {
+        Vector<3, float> realNormal = vertexin.normal.Normalized();
+        Vector<3, float> realTangent = vertexin.tangent.Normalized();
+        // Do this in the vertex stage?
+        Vector<3, float> binormal = Vector<3,float>::Cross(realNormal, realTangent);
+        Matrix<float> tangentSpaceAxis{
+            Vector<4, float>{realTangent, 0},
+            Vector<4, float>{binormal, 0},
+            Vector<4, float>{realNormal, 0},
+            Vector<4,float>::Zero
+        };
+
+        ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
+        normal = Vector<3,float>{(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
+        normal = tangentSpaceAxis.TransformVector(normal);
+    }
+    else
+    {
+        normal = vertexin.normal.Normalized();
+    }
+    
+
+    
+    Vector<3, float> lightDirection = -GetLights().at(0); // TODO: Multilight
+
+    float obverableArea = Vector<3,float>::Dot(normal, lightDirection); // TODO: Make multiLight work
+    obverableArea = std::max<float>(cosineLaw, 0);
+
+
+    
     
     switch (m_ShadingMode)
     {
     case ShadingMode::texture:
         {
-            Vector<3, float> normal;
-            if (m_UseNormalMaps)
-            {
-                // Do this in the vertex stage?
-                Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal.Normalized(), vertexin.tangent);
-                Matrix<float> tangentSpaceAxis = {
-                    vertexin.tangent.Normalized(),
-                    binormal,
-                    vertexin.normal.Normalized(),
-                    Vector<4,float>::Zero};
-
-                ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
-                normal = {(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
-                normal = tangentSpaceAxis.TransformVector(normal);
-            }
-            else
-            {
-                normal = vertexin.normal.Normalized();
-            }
 
 
-            Vector<3, float> lightDirection = -GetLights().at(0);
+
             
-            float cosineLaw = Vector<3,float>::Dot(normal, lightDirection); // TODO: Make multiLight work
-            cosineLaw = std::max<float>(cosineLaw, 0);
+
 
             ColorRGB abient = m_Texture->Sample(vertexin.uv);
             const ColorRGB lambertDiffuse = (abient * diffuseReflectance) / PI;
@@ -440,9 +458,7 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
             
             ColorRGB phong = ColorRGB{(specular * std::pow(std::max(0.0f, cosAngle), gloss * shininess))};
             
-            // finalColor = m_Texture->Sample(vertexin.uv);
             finalColor = ( 0.25f * abient +(lambertDiffuse * cosineLaw) + phong );
-            // finalColor = phong;
         }
         break;
     case ShadingMode::modelNormals:
@@ -469,14 +485,13 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
             }
 
             finalColor = ColorRGB{Remap01(normal.x, -1.0f, 1.0f), Remap01(normal.y, -1.0f, 1.0f), Remap01(normal.z, -1.0,  1.0)};
-            // finalColor = ColorRGB{Remap(normal.x, -1, 1, 0, 1), Remap(normal.y, -1, 1, 0, 1), Remap(normal.z, -1, 1, 0, 1)};
         }
         break;
     case ShadingMode::tangent:
         finalColor = ColorRGB{Remap(vertexin.tangent.x, -1, 1, 0, 1), Remap(vertexin.tangent.y, -1, 1, 0, 1), Remap(vertexin.tangent.z, -1, 1, 0, 1)};
         break;
     }
-
+    
     
     return finalColor;
 }

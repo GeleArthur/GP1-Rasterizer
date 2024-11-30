@@ -21,9 +21,10 @@ namespace dae
 
 	enum class ShadingMode
 	{
-		texture,
-		modelNormals,
-		tangent
+		observed_area,
+		diffuse,
+		specular,
+		combind
 	};
 
 	class Renderer final
@@ -49,9 +50,10 @@ namespace dae
 
 		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix<float>& world_matrix) const;
 
-		void ChangeRenderMode();
+		void ChangeShadingMode();
 		void ToggleRotation();
 		void ToggleNormalMaps();
+		void ToggleDepthRendering();
 		Camera& GetCamera();
 
 		template<typename T>

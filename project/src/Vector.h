@@ -118,8 +118,8 @@ struct Vector<3, T>
 	T z;
 
 	Vector() = default;
-	Vector(const T& tx, const T& ty, const T& tz) : x{tx}, y{ty}, z{tz} {}
-	Vector(const Vector<4,T>& v) : x(v.x), y(v.y), z(v.z){}
+	explicit  Vector(const T& tx, const T& ty, const T& tz) : x{tx}, y{ty}, z{tz} {}
+	explicit  Vector(const Vector<4,T>& v) : x(v.x), y(v.y), z(v.z){}
 
 	T Magnitude() const
 	{
@@ -272,7 +272,7 @@ struct Vector<4, T>
 
 	Vector() = default;
 	Vector(const T& tx, const T& ty, const T& tz, const T& tw) : x{tx}, y{ty}, z{tz}, w{tw} {}
-	Vector(const Vector<3,T>& v, const T& _w) : x{v.x}, y{v.y}, z{v.z}, w{_w} {}
+	explicit  Vector(const Vector<3,T>& v, const T& _w) : x{v.x}, y{v.y}, z{v.z}, w{_w} {}
 
 	T Magnitude() const
 	{
