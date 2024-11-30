@@ -32,7 +32,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
     depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
 
     //Initialize Camera
-    m_Camera.Initialize(45.f, {.0f, 5.0f, -50.0f});
+    m_Camera.Initialize(45.f, {.0f, 0.0f, -50.0f});
     m_BinnedVertexOut.resize(m_CoreCount);
     m_CoresIds.resize(m_CoreCount);
     std::iota(m_CoresIds.begin(), m_CoresIds.end(), 0);
@@ -101,7 +101,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
     Utils::ParseOBJ("resources/vehicle.obj", putput, putputince);
     
-    Matrix<float> pain = Matrix<float>::CreateRotationY(PI_DIV_2);
+    Matrix<float> pain = Matrix<float>::CreateRotationY(0);
     
     m_Meshes.push_back(std::make_unique<Mesh>(
         std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
@@ -199,7 +199,7 @@ void Renderer::Render()
                 break;
             }
 
-            if (FrustemCulling(vertex0->position, vertex1->position, vertex2->position)) continue;
+            if (FrustemCulling(Vector<3,float>{vertex0->position}, Vector<3,float>{vertex1->position}, Vector<3,float>{vertex2->position})) continue;
 
             RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer, *m_Texture);
         }
@@ -326,7 +326,7 @@ void Renderer::VertexStage(const std::vector<Vertex>& vertices_in, std::vector<V
            thing.x = thing.x / thing.w;
            thing.y = thing.y / thing.w;
            thing.z = thing.z / thing.w;
-
+           
            return Vertex_Out{
                .position = thing,
                .color = v.color,
@@ -402,7 +402,7 @@ bool Renderer::CheckInFrustum(const Vector<3, float>& v) const
 
 ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseReflectance, float shininess)
 {
-    ColorRGB finalColor;
+    ColorRGB finalColor{0};
 
     Vector<3, float> normal;
     if (m_UseNormalMaps)
@@ -411,84 +411,57 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
         Vector<3, float> realTangent = vertexin.tangent.Normalized();
         // Do this in the vertex stage?
         Vector<3, float> binormal = Vector<3,float>::Cross(realNormal, realTangent);
-        Matrix<float> tangentSpaceAxis{
+        Matrix tangentSpaceAxis{
             Vector<4, float>{realTangent, 0},
             Vector<4, float>{binormal, 0},
             Vector<4, float>{realNormal, 0},
             Vector<4,float>::Zero
         };
-
+        
         ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
         normal = Vector<3,float>{(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
-        normal = tangentSpaceAxis.TransformVector(normal);
+        normal = tangentSpaceAxis.TransformVector(normal).Normalized();
+        // if (normal.Magnitude() > 1.1f)
+        // {
+        //     std::cout << "WHAT";
+        // }
     }
     else
     {
         normal = vertexin.normal.Normalized();
     }
     
+    Vector<3, float> lightDirection = GetLights().at(0).Normalized(); // TODO: Multilight
+
+    ColorRGB albedoTexture = m_Texture->Sample(vertexin.uv);
 
     
-    Vector<3, float> lightDirection = -GetLights().at(0); // TODO: Multilight
+    float obsverableArea = Vector<3,float>::Dot(-lightDirection, normal);
+    obsverableArea = std::max<float>(obsverableArea, 0);
 
-    float obverableArea = Vector<3,float>::Dot(normal, lightDirection); // TODO: Make multiLight work
-    obverableArea = std::max<float>(cosineLaw, 0);
+    ColorRGB lambert = (diffuseReflectance * albedoTexture) / PI;
 
+    Vector<3,float> reflect = Vector<3,float>::Reflect(lightDirection, normal);
+    float cosAngle = std::max(-1.0f,Vector<3,float>::Dot(reflect, normal));
 
-    
+    float specularReflectance = m_SpecularTexture->Sample(vertexin.uv).r;
+    float gloss = m_GlossTexture->Sample(vertexin.uv).r;
+
+    float phong = specularReflectance * std::pow(cosAngle, gloss * shininess);
     
     switch (m_ShadingMode)
     {
-    case ShadingMode::texture:
-        {
-
-
-
-            
-
-
-            ColorRGB abient = m_Texture->Sample(vertexin.uv);
-            const ColorRGB lambertDiffuse = (abient * diffuseReflectance) / PI;
-
-            Vector<3, float> reflect = Vector<3, float>::Reflect(lightDirection, normal);
-            float cosAngle = Vector<3,float>::Dot(reflect, vertexin.viewDirection);
-
-            float specular = m_SpecularTexture->Sample(vertexin.uv).r;
-            float gloss = m_GlossTexture->Sample(vertexin.uv).r;
-            
-            ColorRGB phong = ColorRGB{(specular * std::pow(std::max(0.0f, cosAngle), gloss * shininess))};
-            
-            finalColor = ( 0.25f * abient +(lambertDiffuse * cosineLaw) + phong );
-        }
+    case ShadingMode::observed_area:
+        finalColor = ColorRGB{obsverableArea};
         break;
-    case ShadingMode::modelNormals:
-        {
-
-            Vector<3, float> normal;
-            if (m_UseNormalMaps)
-            {
-                // Do this in the vertex stage?
-                Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal.Normalized(), vertexin.tangent);
-                Matrix<float> tangentSpaceAxis = {
-                    vertexin.tangent.Normalized(),
-                    binormal,
-                    vertexin.normal.Normalized(),
-                    Vector<4,float>::Zero};
-            
-                ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
-                normal = {(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
-                normal = tangentSpaceAxis.TransformVector(normal);
-            }
-            else
-            {
-                normal = vertexin.normal.Normalized();
-            }
-
-            finalColor = ColorRGB{Remap01(normal.x, -1.0f, 1.0f), Remap01(normal.y, -1.0f, 1.0f), Remap01(normal.z, -1.0,  1.0)};
-        }
+    case ShadingMode::diffuse:
+        finalColor = lambert * obsverableArea;
         break;
-    case ShadingMode::tangent:
-        finalColor = ColorRGB{Remap(vertexin.tangent.x, -1, 1, 0, 1), Remap(vertexin.tangent.y, -1, 1, 0, 1), Remap(vertexin.tangent.z, -1, 1, 0, 1)};
+    case ShadingMode::specular:
+        finalColor = ColorRGB{phong};
+        break;
+    case ShadingMode::combind:
+        finalColor = albedoTexture * 0.25f + ColorRGB{phong} + lambert * obsverableArea;
         break;
     }
     

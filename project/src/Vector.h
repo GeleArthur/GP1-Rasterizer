@@ -118,7 +118,7 @@ struct Vector<3, T>
 	T z;
 
 	Vector() = default;
-	explicit  Vector(const T& tx, const T& ty, const T& tz) : x{tx}, y{ty}, z{tz} {}
+	Vector(const T& tx, const T& ty, const T& tz) : x{tx}, y{ty}, z{tz} {}
 	explicit  Vector(const Vector<4,T>& v) : x(v.x), y(v.y), z(v.z){}
 
 	T Magnitude() const
@@ -166,7 +166,7 @@ struct Vector<3, T>
 
 	static Vector Reflect(const Vector& v1, const Vector& v2)
 	{
-		return v1 - (v2 * 2.f * Dot(v1, v2));
+		return v1 - (v2 * (2.f * Dot(v1, v2)));
 	}
 
 	Vector operator*(T scale) const

@@ -86,10 +86,10 @@ namespace dae {
 		const Matrix& Inverse()
 		{
 			//Optimized Inverse as explained in FGED1 - used widely in other libraries too.
-			const Vector<3,T>& a = data[0];
-			const Vector<3,T>& b = data[1];
-			const Vector<3,T>& c = data[2];
-			const Vector<3,T>& d = data[3];
+			const Vector<3,T>& a = Vector<3,T>{data[0]};
+			const Vector<3,T>& b = Vector<3,T>{data[1]};
+			const Vector<3,T>& c = Vector<3,T>{data[2]};
+			const Vector<3,T>& d = Vector<3,T>{data[3]};
 
 			const T x = data[0][3];
 			const T y = data[1][3];
@@ -144,7 +144,7 @@ namespace dae {
 		}
 		static Matrix CreateRotationX(T pitch)
 		{
-			return {
+			return Matrix{
 				{1, 0, 0, 0},
 				{0, cos(pitch), -sin(pitch), 0},
 				{0, sin(pitch), cos(pitch), 0},
@@ -153,7 +153,7 @@ namespace dae {
 		}
 		static Matrix CreateRotationY(T yaw)
 		{
-			return {
+			return Matrix{
 				{cos(yaw), 0, -sin(yaw), 0},
 				{0, 1, 0, 0},
 				{sin(yaw), 0, cos(yaw), 0},
@@ -162,7 +162,7 @@ namespace dae {
 		}
 		static Matrix CreateRotationZ(T roll)
 		{
-			return {
+			return Matrix{
 				{cos(roll), sin(roll), 0, 0},
 				{-sin(roll), cos(roll), 0, 0},
 				{0, 0, 1, 0},
@@ -202,7 +202,7 @@ namespace dae {
 
 		static Matrix CreatePerspectiveFovLH(T fov, T aspect, T near, T far)
 		{
-			return {
+			return Matrix{
 				{1.0f/(aspect*fov),0       ,0                     ,0},
 				{0                ,1.0f/fov,0                     ,0},
 				{0                ,0       ,far/(far-near)        ,1.0f},

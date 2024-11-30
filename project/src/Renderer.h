@@ -87,7 +87,7 @@ namespace dae
 
 		bool m_RenderDepth{};
 		ShadingMode m_ShadingMode{};
-		bool m_Rotating{false};
+		bool m_Rotating{true};
 		bool m_UseNormalMaps{true};
 
 	};
