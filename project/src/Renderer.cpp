@@ -5,6 +5,7 @@
 //Project includes
 #include "Renderer.h"
 
+#include <algorithm>
 #include <array>
 #include <execution>
 
@@ -98,29 +99,25 @@ Renderer::Renderer(SDL_Window* pWindow) :
     std::vector<Vertex> putput;
     std::vector<uint32_t> putputince;
 
-    // Utils::ParseOBJ("resources/tuktuk.obj", putput, putputince);
     Utils::ParseOBJ("resources/vehicle.obj", putput, putputince);
-    // Utils::BetterParseObj("resources/Boat.obj", putput, putputince);
-
+    
     Matrix<float> pain = Matrix<float>::CreateRotationY(PI_DIV_2);
-
+    
     m_Meshes.push_back(std::make_unique<Mesh>(
         std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
     ));
-
     
-
     m_Meshes.push_back(std::make_unique<Mesh>(
         std::vector<Vertex>{
             {.position= {0, -5, 0}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
             {.position= {20, -5, 0}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {20, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
             {.position= {0, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {20, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
         },
         std::vector<uint32_t>{
-            0, 1, 2, 3
+            2,1,0, 2,3,1
         },
-        PrimitiveTopology::TriangleStrip,
+        PrimitiveTopology::TriangleList,
         Matrix<float>{
             {1, 0, 0, 0},
             {0, 1, 0, 0},
@@ -128,9 +125,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
             {0, 0, 0, 1},
         }
     ));
+    
     m_Lights.push_back({0.577f, -0.577f, 0.577f});
     
-
+    
     m_Texture = Texture::LoadFromFile("resources/vehicle_diffuse.png");
     m_NormalTexture = Texture::LoadFromFile("resources/vehicle_normal.png");
     m_GlossTexture = Texture::LoadFromFile("resources/vehicle_gloss.png");
@@ -152,7 +150,6 @@ void Renderer::Update(Timer* pTimer)
             mesh->worldMatrix *= Matrix<float>::CreateRotationY(pTimer->GetElapsed());
         }
     }
-    
 }
 
 void Renderer::Render()
@@ -281,13 +278,28 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                     Vector<3, float> tangent = (vertex0.tangent / vertex0.position.w * distV0 + vertex1.tangent / vertex1.position.w * distV1 + vertex2.tangent / vertex2.position.w * distV2) * depthW;
                     Vector<3, float> viewDirection = (vertex0.viewDirection / vertex0.position.w * distV0 + vertex1.viewDirection / vertex1.position.w * distV1 + vertex2.viewDirection / vertex2.position.w * distV2) * depthW;
 
+                    ColorRGB finalColor;
 
+                    if (m_RenderDepth)
+                    {
+                        finalColor = ColorRGB{Remap01(depth, 0.8f, 1.0f)};
+                    }
+                    else
+                    {
+                        finalColor = FragmentShader(
+                            Vertex_Out{
+                                .position = position,
+                                .color = ColorRGB{},
+                                .uv = uv,
+                                .normal = normal,
+                                .tangent = tangent,
+                                .viewDirection = viewDirection
+                            },
+                            7.0f,
+                            25.0f);
+                    }
                     
-                    ColorRGB finalColor = FragmentShader(Vertex_Out{
-                                                             .position = position, .color = ColorRGB{}, .uv = uv,
-                                                             .normal = normal, .tangent = tangent,
-                                                             .viewDirection = viewDirection
-                                                         }, depth, 7.0f, 25.0f);
+
                     
                     //Update Color in Buffer
                     finalColor.MaxToOne();
@@ -382,7 +394,7 @@ bool Renderer::CheckInFrustum(const Vector<3, float>& v) const
     return false;
 }
 
-ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float diffuseReflectance, float shininess)
+ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseReflectance, float shininess)
 {
 
     ColorRGB finalColor;
@@ -415,11 +427,8 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float
             Vector<3, float> lightDirection = -GetLights().at(0);
             
             float cosineLaw = Vector<3,float>::Dot(normal, lightDirection); // TODO: Make multiLight work
-            if (cosineLaw < 0)
-            {
-                return ColorRGB{0, 0, 0};
-            }
-            
+            cosineLaw = std::max<float>(cosineLaw, 0);
+
             ColorRGB abient = m_Texture->Sample(vertexin.uv);
             const ColorRGB lambertDiffuse = (abient * diffuseReflectance) / PI;
 
@@ -433,15 +442,9 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float
             
             // finalColor = m_Texture->Sample(vertexin.uv);
             finalColor = ( 0.25f * abient +(lambertDiffuse * cosineLaw) + phong );
-            finalColor = phong;
+            // finalColor = phong;
         }
         break;
-    case ShadingMode::depthBuffer:
-    {
-        float depthWRemapped = Remap(depth, 0.8f, 1, 0.0f, 1.0f);
-        finalColor = ColorRGB{depthWRemapped, depthWRemapped, depthWRemapped};
-        break;
-    }
     case ShadingMode::modelNormals:
         {
 
