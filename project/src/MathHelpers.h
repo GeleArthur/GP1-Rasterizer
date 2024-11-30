@@ -62,4 +62,9 @@ namespace dae
 	{
 		return start2 + (value - start1) * (stop2 - start2) / (stop1 - start1);
 	}
+
+	inline float Remap01(float value, float start, float stop)
+	{
+		return (value - start) / (stop - start);
+	}
 }

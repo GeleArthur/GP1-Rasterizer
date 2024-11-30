@@ -32,6 +32,7 @@ namespace dae
 
 		float totalPitch{};
 		float totalYaw{};
+		float speed{1};
 
 		Matrix<float> invViewMatrix{};
 		Matrix<float> viewMatrix{};
@@ -97,19 +98,19 @@ namespace dae
 			Vector<3,float> input{};
 			if(pKeyboardState[SDL_SCANCODE_W])
 			{
-				input.z += 1;
+				input.z += speed;
 			}
 			if(pKeyboardState[SDL_SCANCODE_S])
 			{
-				input.z -= 1;
+				input.z -= speed;
 			}
 			if(pKeyboardState[SDL_SCANCODE_A])
 			{
-				input.x -= 1;
+				input.x -= speed;
 			}
 			if(pKeyboardState[SDL_SCANCODE_D])
 			{
-				input.x += 1;
+				input.x += speed;
 			}
 
 			if(mouseState == SDL_BUTTON_RMASK)

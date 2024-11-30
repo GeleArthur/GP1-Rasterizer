@@ -73,6 +73,13 @@ int main(int argc, char* args[])
 					takeScreenshot = true;
 				if (e.key.keysym.scancode == SDL_SCANCODE_F4)
 					pRenderer->ChangeRenderMode();
+				if (e.key.keysym.scancode == SDL_SCANCODE_F5)
+					pRenderer->ToggleRotation();
+				if (e.key.keysym.scancode == SDL_SCANCODE_F6)
+					pRenderer->ToggleNormalMaps();
+				break;
+			case SDL_MOUSEWHEEL:
+				pRenderer->GetCamera().speed = std::max(0.001f, pRenderer->GetCamera().speed + e.wheel.preciseY);
 				break;
 			}
 		}

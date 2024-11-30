@@ -7,7 +7,7 @@ namespace dae
 	struct ColorRGB
 	{
 		ColorRGB(float _r, float _g, float _b): r(_r), g(_g), b(_b) {}
-		ColorRGB(float number): r(number), g(number), b(number) {}
+		explicit ColorRGB(float number): r(number), g(number), b(number) {}
 		ColorRGB(): r(0), g(0), b(0) {}
 		
 		float r{};

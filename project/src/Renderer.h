@@ -51,6 +51,9 @@ namespace dae
 		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix<float>& world_matrix) const;
 
 		void ChangeRenderMode();
+		void ToggleRotation();
+		void ToggleNormalMaps();
+		Camera& GetCamera();
 
 		template<typename T>
 		using Buffer2D= std::vector<std::vector<T>>;
@@ -81,6 +84,8 @@ namespace dae
 
 		bool m_DEBUG_MoveMouse{};
 		ShadingMode m_ShadingMode{};
+		bool m_Rotating{false};
+		bool m_UseNormalMaps{true};
 
 	};
 }

@@ -31,7 +31,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
     depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
 
     //Initialize Camera
-    m_Camera.Initialize(45.f, {.0f, 0.0f, -50.0f});
+    m_Camera.Initialize(45.f, {.0f, 5.0f, -50.0f});
     m_BinnedVertexOut.resize(m_CoreCount);
     m_CoresIds.resize(m_CoreCount);
     std::iota(m_CoresIds.begin(), m_CoresIds.end(), 0);
@@ -104,22 +104,23 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
     Matrix<float> pain = Matrix<float>::CreateRotationY(PI_DIV_2);
 
-    // m_Meshes.push_back(std::make_unique<Mesh>(
-    //     std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
-    // ));
+    m_Meshes.push_back(std::make_unique<Mesh>(
+        std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
+    ));
 
     
 
     m_Meshes.push_back(std::make_unique<Mesh>(
         std::vector<Vertex>{
-            {.position= {0, 0, 10}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {0, 3, 10}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {3, 3, 10}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {0, -5, 0}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {20, -5, 0}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {20, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {0, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
         },
         std::vector<uint32_t>{
-            0, 1, 2
+            0, 1, 2, 3
         },
-        PrimitiveTopology::TriangleList,
+        PrimitiveTopology::TriangleStrip,
         Matrix<float>{
             {1, 0, 0, 0},
             {0, 1, 0, 0},
@@ -144,7 +145,14 @@ void Renderer::Update(Timer* pTimer)
 {
     m_Camera.Update(pTimer);
 
-    // m_Meshes[0]->worldMatrix = Matrix<float>::CreateRotationY(pTimer->GetTotal());
+    if (m_Rotating)
+    {
+        for (const auto & mesh : m_Meshes)
+        {
+            mesh->worldMatrix *= Matrix<float>::CreateRotationY(pTimer->GetElapsed());
+        }
+    }
+    
 }
 
 void Renderer::Render()
@@ -343,6 +351,21 @@ void Renderer::ChangeRenderMode()
     }
 }
 
+void Renderer::ToggleRotation()
+{
+    m_Rotating = !m_Rotating;
+}
+
+void Renderer::ToggleNormalMaps()
+{
+    m_UseNormalMaps = !m_UseNormalMaps;
+}
+
+Camera& Renderer::GetCamera()
+{
+    return m_Camera;
+}
+
 bool Renderer::FrustemCulling(const Vector<3, float>& v0, const Vector<3, float>& v1, const Vector<3, float>& v2) const
 {
     if (CheckInFrustum(v0)) return true;
@@ -368,39 +391,49 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float
     {
     case ShadingMode::texture:
         {
-            // Do this in the vertex stage?
-            Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal, vertexin.tangent);
-            Matrix<float> tangentSpaceAxis = {
-                vertexin.tangent,
-                binormal,
-                vertexin.normal,
-                Vector<4,float>::Zero};
+            Vector<3, float> normal;
+            if (m_UseNormalMaps)
+            {
+                // Do this in the vertex stage?
+                Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal.Normalized(), vertexin.tangent);
+                Matrix<float> tangentSpaceAxis = {
+                    vertexin.tangent.Normalized(),
+                    binormal,
+                    vertexin.normal.Normalized(),
+                    Vector<4,float>::Zero};
 
-            ColorRGB normal = m_NormalTexture->Sample(vertexin.uv);
-            Vector<3, float> correctedNormal = {(2.0f * normal.r) - 1.0f, (2.0f * normal.g) - 1.0f, normal.b};
-            correctedNormal = tangentSpaceAxis.TransformVector(correctedNormal);
+                ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
+                normal = {(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
+                normal = tangentSpaceAxis.TransformVector(normal);
+            }
+            else
+            {
+                normal = vertexin.normal.Normalized();
+            }
+
 
             Vector<3, float> lightDirection = -GetLights().at(0);
             
-            float cosineLaw = Vector<3,float>::Dot(correctedNormal.Normalized(), lightDirection); // TODO: Make multiLight work
+            float cosineLaw = Vector<3,float>::Dot(normal, lightDirection); // TODO: Make multiLight work
             if (cosineLaw < 0)
             {
                 return ColorRGB{0, 0, 0};
             }
+            
+            ColorRGB abient = m_Texture->Sample(vertexin.uv);
+            const ColorRGB lambertDiffuse = (abient * diffuseReflectance) / PI;
 
-            const ColorRGB lambertDiffuse = (m_Texture->Sample(vertexin.uv) * diffuseReflectance) / PI;
-
-            Vector<3, float> reflect = Vector<3, float>::Reflect(lightDirection, correctedNormal);
+            Vector<3, float> reflect = Vector<3, float>::Reflect(lightDirection, normal);
             float cosAngle = Vector<3,float>::Dot(reflect, vertexin.viewDirection);
 
             float specular = m_SpecularTexture->Sample(vertexin.uv).r;
             float gloss = m_GlossTexture->Sample(vertexin.uv).r;
             
-            ColorRGB phong = (specular * std::pow(std::max(0.0f, cosAngle),   gloss * shininess));
+            ColorRGB phong = ColorRGB{(specular * std::pow(std::max(0.0f, cosAngle), gloss * shininess))};
             
             // finalColor = m_Texture->Sample(vertexin.uv);
-            finalColor = (phong + lambertDiffuse) * cosineLaw;
-            // finalColor = phong;
+            finalColor = ( 0.25f * abient +(lambertDiffuse * cosineLaw) + phong );
+            finalColor = phong;
         }
         break;
     case ShadingMode::depthBuffer:
@@ -410,7 +443,31 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float
         break;
     }
     case ShadingMode::modelNormals:
-        finalColor = ColorRGB{Remap(vertexin.normal.x, -1, 1, 0, 1), Remap(vertexin.normal.y, -1, 1, 0, 1), Remap(vertexin.normal.z, -1, 1, 0, 1)};
+        {
+
+            Vector<3, float> normal;
+            if (m_UseNormalMaps)
+            {
+                // Do this in the vertex stage?
+                Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal.Normalized(), vertexin.tangent);
+                Matrix<float> tangentSpaceAxis = {
+                    vertexin.tangent.Normalized(),
+                    binormal,
+                    vertexin.normal.Normalized(),
+                    Vector<4,float>::Zero};
+            
+                ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
+                normal = {(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
+                normal = tangentSpaceAxis.TransformVector(normal);
+            }
+            else
+            {
+                normal = vertexin.normal.Normalized();
+            }
+
+            finalColor = ColorRGB{Remap01(normal.x, -1.0f, 1.0f), Remap01(normal.y, -1.0f, 1.0f), Remap01(normal.z, -1.0,  1.0)};
+            // finalColor = ColorRGB{Remap(normal.x, -1, 1, 0, 1), Remap(normal.y, -1, 1, 0, 1), Remap(normal.z, -1, 1, 0, 1)};
+        }
         break;
     case ShadingMode::tangent:
         finalColor = ColorRGB{Remap(vertexin.tangent.x, -1, 1, 0, 1), Remap(vertexin.tangent.y, -1, 1, 0, 1), Remap(vertexin.tangent.z, -1, 1, 0, 1)};
