@@ -31,7 +31,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
     depthBuffer.resize(static_cast<size_t>(m_Width) * m_Height);
 
     //Initialize Camera
-    m_Camera.Initialize(60.f, {.0f, 0.0f, 0.0f});
+    m_Camera.Initialize(45.f, {.0f, 0.0f, -50.0f});
     m_BinnedVertexOut.resize(m_CoreCount);
     m_CoresIds.resize(m_CoreCount);
     std::iota(m_CoresIds.begin(), m_CoresIds.end(), 0);
@@ -98,25 +98,23 @@ Renderer::Renderer(SDL_Window* pWindow) :
     std::vector<Vertex> putput;
     std::vector<uint32_t> putputince;
 
-    Utils::ParseOBJ("resources/tuktuk.obj", putput, putputince);
+    // Utils::ParseOBJ("resources/tuktuk.obj", putput, putputince);
+    Utils::ParseOBJ("resources/vehicle.obj", putput, putputince);
     // Utils::BetterParseObj("resources/Boat.obj", putput, putputince);
 
-    Matrix<float> pain{
-        {1, 0, 0, 0},
-        {0, 1, 0, 0},
-        {0, 0, 1, 0},
-        {0, 0, 0, 1},
-    };
+    Matrix<float> pain = Matrix<float>::CreateRotationY(PI_DIV_2);
 
-    m_Meshes.push_back(std::make_unique<Mesh>(
-        std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
-    ));
+    // m_Meshes.push_back(std::make_unique<Mesh>(
+    //     std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
+    // ));
+
+    
 
     m_Meshes.push_back(std::make_unique<Mesh>(
         std::vector<Vertex>{
-            {{0, 0, 10}, {colors::White}, {0, 0}},
-            {{0, 3, 10}, {colors::White}, {0.5, 0}},
-            {{3, 3, 10}, {colors::White}, {1, 0}},
+            {.position= {0, 0, 10}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {0, 3, 10}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+            {.position= {3, 3, 10}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
         },
         std::vector<uint32_t>{
             0, 1, 2
@@ -129,8 +127,13 @@ Renderer::Renderer(SDL_Window* pWindow) :
             {0, 0, 0, 1},
         }
     ));
+    m_Lights.push_back({0.577f, -0.577f, 0.577f});
+    
 
-    m_Texture = Texture::LoadFromFile("resources/tuktuk.png");
+    m_Texture = Texture::LoadFromFile("resources/vehicle_diffuse.png");
+    m_NormalTexture = Texture::LoadFromFile("resources/vehicle_normal.png");
+    m_GlossTexture = Texture::LoadFromFile("resources/vehicle_gloss.png");
+    m_SpecularTexture = Texture::LoadFromFile("resources/vehicle_specular.png");
 }
 
 Renderer::~Renderer()
@@ -141,7 +144,7 @@ void Renderer::Update(Timer* pTimer)
 {
     m_Camera.Update(pTimer);
 
-    m_Meshes[0]->worldMatrix = Matrix<float>::CreateRotationY(pTimer->GetTotal());
+    // m_Meshes[0]->worldMatrix = Matrix<float>::CreateRotationY(pTimer->GetTotal());
 }
 
 void Renderer::Render()
@@ -224,8 +227,6 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
         {
             Vector<2, float> pixelLocation = {static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f};
 
-
-
             // (v1.x - v0.x) * (pixelLocation.y - v0.y) - (v1.y - v0.y) * (pixelLocation.x - v0.x)
 
             float distV2 = Vector<2, float>::Cross(v1 - v0, pixelLocation - v0);
@@ -239,8 +240,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                 distV1 = (distV1 / area);
                 distV2 = (distV2 / area);
 
-                const float depth = 1.0f / (1.0f / vertex0.position.z * distV0 + 1.0f / vertex1.position.z * distV1 +
-                    1.0f / vertex2.position.z * distV2);
+                const float depth = 1.0f / (1.0f / vertex0.position.z * distV0 + 1.0f / vertex1.position.z * distV1 + 1.0f / vertex2.position.z * distV2);
 
                 if (depth > 1 || depth < 0)
                 {
@@ -265,30 +265,21 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                     // #endif
                     
 
-                    float depthW = 1.0f / (1.0f / vertex0.position.w * distV0 + 1.0f / vertex1.position.w * distV1 +
-                        1.0f / vertex2.position.w * distV2);
-                    Vector<2, float> uv = (vertex0.uv / vertex0.position.w * distV0 + vertex1.uv / vertex1.position.w *
-                        distV1 + vertex2.uv / vertex2.position.w * distV2) * depthW;
+                    float depthW = 1.0f / (1.0f / vertex0.position.w * distV0 + 1.0f / vertex1.position.w * distV1 + 1.0f / vertex2.position.w * distV2);
 
-                    Vector<3, float> normal = (vertex0.normal / vertex0.position.w * distV0 + vertex1.normal / vertex1.position.w *
-                            distV1 + vertex2.normal / vertex2.position.w * distV2) * depthW;
+                    Vector<4, float> position = (vertex0.position / vertex0.position.w * distV0 + vertex1.position / vertex1.position.w * distV1 + vertex2.position / vertex2.position.w * distV2) * depthW;
+                    Vector<2, float> uv = (vertex0.uv / vertex0.position.w * distV0 + vertex1.uv / vertex1.position.w * distV1 + vertex2.uv / vertex2.position.w * distV2) * depthW;
+                    Vector<3, float> normal = (vertex0.normal / vertex0.position.w * distV0 + vertex1.normal / vertex1.position.w * distV1 + vertex2.normal / vertex2.position.w * distV2) * depthW;
+                    Vector<3, float> tangent = (vertex0.tangent / vertex0.position.w * distV0 + vertex1.tangent / vertex1.position.w * distV1 + vertex2.tangent / vertex2.position.w * distV2) * depthW;
+                    Vector<3, float> viewDirection = (vertex0.viewDirection / vertex0.position.w * distV0 + vertex1.viewDirection / vertex1.position.w * distV1 + vertex2.viewDirection / vertex2.position.w * distV2) * depthW;
 
-                    ColorRGB finalColor{0, 0, 0};
 
-                    switch (m_ShadingMode)
-                    {
-                    case ShadingMode::texture:
-                        finalColor = texture.Sample(uv);
-                        break;
-                    case ShadingMode::depthBuffer:
-                        {
-                            float depthWRemapped = Remap(depth, 0.8f, 1, 0.0f, 1.0f);
-                            finalColor = ColorRGB{depthWRemapped, depthWRemapped, depthWRemapped};
-                            break;
-                        }
-                    case ShadingMode::modelNormals:
-                        finalColor = ColorRGB{Remap(normal.x, -1, 1, 0, 1), Remap(normal.y, -1, 1, 0, 1), Remap(normal.z, -1, 1, 0, 1)};
-                    }
+                    
+                    ColorRGB finalColor = FragmentShader(Vertex_Out{
+                                                             .position = position, .color = ColorRGB{}, .uv = uv,
+                                                             .normal = normal, .tangent = tangent,
+                                                             .viewDirection = viewDirection
+                                                         }, depth, 7.0f, 25.0f);
                     
                     //Update Color in Buffer
                     finalColor.MaxToOne();
@@ -318,7 +309,14 @@ void Renderer::VertexStage(const std::vector<Vertex>& vertices_in, std::vector<V
            thing.y = thing.y / thing.w;
            thing.z = thing.z / thing.w;
 
-           return Vertex_Out{thing, v.color, v.uv, world_matrix.TransformVector(v.normal)};
+           return Vertex_Out{
+               .position = thing,
+               .color = v.color,
+               .uv = v.uv,
+               .normal = world_matrix.TransformVector(v.normal),
+               .tangent = world_matrix.TransformVector(v.tangent),
+               .viewDirection = (m_Camera.origin - world_matrix.TransformPoint(v.position)).Normalized()
+           };
        });
 }
 
@@ -334,18 +332,16 @@ void Renderer::ChangeRenderMode()
         m_ShadingMode = ShadingMode::modelNormals;
         std::cout << "normals" << '\n';
         break;
-        case ShadingMode::modelNormals:
+    case ShadingMode::modelNormals:
+        m_ShadingMode = ShadingMode::tangent;
+        std::cout << "tangent" << '\n';
+        break;
+    case ShadingMode::tangent:
         m_ShadingMode = ShadingMode::texture;
         std::cout << "texture" << '\n';
-            break;
+        break;
     }
 }
-
-ColorRGB Renderer::LambertBRDF()
-{
-    return {0, 0, 0};
-}
-
 
 bool Renderer::FrustemCulling(const Vector<3, float>& v0, const Vector<3, float>& v1, const Vector<3, float>& v2) const
 {
@@ -363,9 +359,71 @@ bool Renderer::CheckInFrustum(const Vector<3, float>& v) const
     return false;
 }
 
-ColorRGB Renderer::FragmentShaderShowNormals()
+ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float depth, float diffuseReflectance, float shininess)
 {
-    return {};
+
+    ColorRGB finalColor;
+    
+    switch (m_ShadingMode)
+    {
+    case ShadingMode::texture:
+        {
+            // Do this in the vertex stage?
+            Vector<3, float> binormal = Vector<3,float>::Cross(vertexin.normal, vertexin.tangent);
+            Matrix<float> tangentSpaceAxis = {
+                vertexin.tangent,
+                binormal,
+                vertexin.normal,
+                Vector<4,float>::Zero};
+
+            ColorRGB normal = m_NormalTexture->Sample(vertexin.uv);
+            Vector<3, float> correctedNormal = {(2.0f * normal.r) - 1.0f, (2.0f * normal.g) - 1.0f, normal.b};
+            correctedNormal = tangentSpaceAxis.TransformVector(correctedNormal);
+
+            Vector<3, float> lightDirection = -GetLights().at(0);
+            
+            float cosineLaw = Vector<3,float>::Dot(correctedNormal.Normalized(), lightDirection); // TODO: Make multiLight work
+            if (cosineLaw < 0)
+            {
+                return ColorRGB{0, 0, 0};
+            }
+
+            const ColorRGB lambertDiffuse = (m_Texture->Sample(vertexin.uv) * diffuseReflectance) / PI;
+
+            Vector<3, float> reflect = Vector<3, float>::Reflect(lightDirection, correctedNormal);
+            float cosAngle = Vector<3,float>::Dot(reflect, vertexin.viewDirection);
+
+            float specular = m_SpecularTexture->Sample(vertexin.uv).r;
+            float gloss = m_GlossTexture->Sample(vertexin.uv).r;
+            
+            ColorRGB phong = (specular * std::pow(std::max(0.0f, cosAngle),   gloss * shininess));
+            
+            // finalColor = m_Texture->Sample(vertexin.uv);
+            finalColor = (phong + lambertDiffuse) * cosineLaw;
+            // finalColor = phong;
+        }
+        break;
+    case ShadingMode::depthBuffer:
+    {
+        float depthWRemapped = Remap(depth, 0.8f, 1, 0.0f, 1.0f);
+        finalColor = ColorRGB{depthWRemapped, depthWRemapped, depthWRemapped};
+        break;
+    }
+    case ShadingMode::modelNormals:
+        finalColor = ColorRGB{Remap(vertexin.normal.x, -1, 1, 0, 1), Remap(vertexin.normal.y, -1, 1, 0, 1), Remap(vertexin.normal.z, -1, 1, 0, 1)};
+        break;
+    case ShadingMode::tangent:
+        finalColor = ColorRGB{Remap(vertexin.tangent.x, -1, 1, 0, 1), Remap(vertexin.tangent.y, -1, 1, 0, 1), Remap(vertexin.tangent.z, -1, 1, 0, 1)};
+        break;
+    }
+
+    
+    return finalColor;
+}
+
+std::vector<Vector<3, float>>& Renderer::GetLights()
+{
+    return m_Lights;
 }
 
 bool Renderer::SaveBufferToImage() const

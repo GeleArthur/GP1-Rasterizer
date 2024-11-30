@@ -23,7 +23,8 @@ namespace dae
 	{
 		texture,
 		depthBuffer,
-		modelNormals
+		modelNormals,
+		tangent
 	};
 
 	class Renderer final
@@ -44,12 +45,12 @@ namespace dae
 		bool SaveBufferToImage() const;
 		bool FrustemCulling(const Vector<3,float>& v0, const Vector<3,float>& v1, const Vector<3,float>& v2) const;
 		bool CheckInFrustum(const Vector<3, float>& v) const;
-		ColorRGB FragmentShaderShowNormals();
+		ColorRGB FragmentShader(const Vertex_Out& vertexin, float depth, float diffuseReflectance, float shininess);
+		std::vector<Vector<3,float>>& GetLights();
 
 		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix<float>& world_matrix) const;
 
 		void ChangeRenderMode();
-		ColorRGB LambertBRDF();
 
 		template<typename T>
 		using Buffer2D= std::vector<std::vector<T>>;
@@ -64,6 +65,10 @@ namespace dae
 
 		std::vector<std::unique_ptr<Mesh>> m_Meshes;
 		std::unique_ptr<Texture> m_Texture;
+		std::unique_ptr<Texture> m_NormalTexture;
+		std::unique_ptr<Texture> m_SpecularTexture;
+		std::unique_ptr<Texture> m_GlossTexture;
+		std::vector<Vector<3,float>> m_Lights;
 
 		Buffer2D<Vertex_Out> m_BinnedVertexOut;
 		std::vector<int> m_CoresIds;

@@ -2,6 +2,8 @@
 #include <cassert>
 #include <cstdint>
 
+#include "ColorRGB.h"
+
 
 template<uint32_t count, typename T>
 struct Vector
@@ -162,6 +164,11 @@ struct Vector<3, T>
 		return (v1 - v2 * (Dot(v1, v2) / Dot(v2, v2)));
 	}
 
+	static Vector Reflect(const Vector& v1, const Vector& v2)
+	{
+		return v1 - (v2 * 2.f * Dot(v1, v2));
+	}
+
 	Vector operator*(T scale) const
 	{
 		return {x * scale, y * scale, z * scale};
@@ -292,6 +299,10 @@ struct Vector<4, T>
 	{
 		return {x * scale, y * scale, z * scale, w * scale};
 	}
+	Vector operator/(T scale) const
+	{
+		return {x / scale, y / scale, z / scale, w / scale};
+	}
 	Vector operator+(const Vector& v) const
 	{
 		return {x + v.x, y + v.y, z + v.z, w + v.w};
@@ -333,5 +344,8 @@ struct Vector<4, T>
 		return w;
 	}
 	
-
+	static const Vector Zero;
 };
+
+template<typename T>
+Vector<4,T> const Vector<4,T>::Zero{0,0,0, 0};

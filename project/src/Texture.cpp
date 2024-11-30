@@ -83,7 +83,7 @@ namespace dae
 		}
 	}
 
-	dae::ColorRGB Texture::Sample(const Vector<2, float>& uv) const
+	ColorRGB Texture::Sample(const Vector<2, float>& uv) const
 	{
 		Uint8 red, green, blue;
 		Vector<2, float> clamped = { std::clamp(uv.x, 0.0f, 1.0f), std::clamp(uv.y, 0.0f, 1.0f) };
