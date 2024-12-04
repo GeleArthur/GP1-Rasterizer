@@ -120,6 +120,7 @@ struct Vector<3, T>
 	Vector() = default;
 	Vector(const T& tx, const T& ty, const T& tz) : x{tx}, y{ty}, z{tz} {}
 	explicit  Vector(const Vector<4,T>& v) : x(v.x), y(v.y), z(v.z){}
+	explicit  Vector(const dae::ColorRGB& v) : x(v.r), y(v.g), z(v.b){}
 
 	T Magnitude() const
 	{

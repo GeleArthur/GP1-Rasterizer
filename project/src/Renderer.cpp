@@ -418,13 +418,9 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
             Vector<4,float>::Zero
         };
         
-        ColorRGB sampledNormal = m_NormalTexture->Sample(vertexin.uv);
-        normal = Vector<3,float>{(2.0f * sampledNormal.r) - 1.0f, (2.0f * sampledNormal.g) - 1.0f, sampledNormal.b};
-        normal = tangentSpaceAxis.TransformVector(normal).Normalized();
-        // if (normal.Magnitude() > 1.1f)
-        // {
-        //     std::cout << "WHAT";
-        // }
+        Vector<3,float> sampledNormal = Vector<3,float>{m_NormalTexture->Sample(vertexin.uv)}.Normalized();
+        normal = Vector<3,float>{(2.0f * sampledNormal.x) - 1.0f, (2.0f * sampledNormal.y) - 1.0f, 2.0f * sampledNormal.z - 1.0f};
+        normal = tangentSpaceAxis.TransformVector(normal.Normalized());
     }
     else
     {
@@ -441,13 +437,15 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
 
     ColorRGB lambert = (diffuseReflectance * albedoTexture) / PI;
 
+
+    
     Vector<3,float> reflect = Vector<3,float>::Reflect(lightDirection, normal);
-    float cosAngle = std::max(-1.0f,Vector<3,float>::Dot(reflect, normal));
+    float cosAngle = std::max(0.0f,Vector<3,float>::Dot(reflect, normal));
 
     float specularReflectance = m_SpecularTexture->Sample(vertexin.uv).r;
-    float gloss = m_GlossTexture->Sample(vertexin.uv).r;
+    float gloss = m_GlossTexture->Sample(vertexin.uv).r * shininess;
 
-    float phong = specularReflectance * std::pow(cosAngle, gloss * shininess);
+    float phong = specularReflectance * std::pow(cosAngle, gloss);
     
     switch (m_ShadingMode)
     {
@@ -461,7 +459,7 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
         finalColor = ColorRGB{phong};
         break;
     case ShadingMode::combind:
-        finalColor = albedoTexture * 0.25f + ColorRGB{phong} + lambert * obsverableArea;
+        finalColor = (albedoTexture * 0.25f) + ColorRGB{phong} + lambert * obsverableArea;
         break;
     }
     
