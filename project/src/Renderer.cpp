@@ -17,6 +17,8 @@
 
 using namespace dae;
 
+using Vector3 = Vector<3,float>;
+
 Renderer::Renderer(SDL_Window* pWindow) :
     m_pWindow(pWindow),
     m_CoreCount(std::thread::hardware_concurrency())
@@ -166,7 +168,7 @@ void Renderer::Render()
 
         VertexStage(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
 
-        for (int i = 0; i < (mesh->primitiveTopology == PrimitiveTopology::TriangleList
+        for (size_t i = 0; i < (mesh->primitiveTopology == PrimitiveTopology::TriangleList
                                  ? mesh->indices.size()
                                  : mesh->indices.size() - 2); i +=
              mesh->primitiveTopology == PrimitiveTopology::TriangleList ? 3 : 1)
@@ -198,9 +200,9 @@ void Renderer::Render()
                 break;
             }
 
-            if (FrustemCulling(Vector<3,float>{vertex0->position}, Vector<3,float>{vertex1->position}, Vector<3,float>{vertex2->position})) continue;
+            if (FrustemCulling(Vector3{vertex0->position}, Vector3{vertex1->position}, Vector3{vertex2->position})) continue;
 
-            RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer, *m_Texture);
+            RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer);
         }
     }
 
@@ -208,17 +210,16 @@ void Renderer::Render()
     //@END
     //Update SDL Surface
     SDL_UnlockSurface(m_pBackBuffer);
-    SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
+    SDL_BlitSurface(m_pBackBuffer, nullptr, m_pFrontBuffer, nullptr);
     SDL_UpdateWindowSurface(m_pWindow);
 }
 
 
-void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2,
-                            std::vector<float>& depth_buffer, const Texture& texture)
+void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer)
 {
-    Vector<2, float> v0 = {(vertex0.position.x + 1) / 2.0f * m_Width, (1 - vertex0.position.y) / 2.0f * m_Height};
-    Vector<2, float> v1 = {(vertex1.position.x + 1) / 2.0f * m_Width, (1 - vertex1.position.y) / 2.0f * m_Height};
-    Vector<2, float> v2 = {(vertex2.position.x + 1) / 2.0f * m_Width, (1 - vertex2.position.y) / 2.0f * m_Height};
+    Vector<2, float> v0 = {(vertex0.position.x + 1) / 2.0f * static_cast<float>(m_Width), (1 - vertex0.position.y) / 2.0f * static_cast<float>(m_Height)};
+    Vector<2, float> v1 = {(vertex1.position.x + 1) / 2.0f * static_cast<float>(m_Width), (1 - vertex1.position.y) / 2.0f * static_cast<float>(m_Height)};
+    Vector<2, float> v2 = {(vertex2.position.x + 1) / 2.0f * static_cast<float>(m_Width), (1 - vertex2.position.y) / 2.0f * static_cast<float>(m_Height)};
 
     int minX = std::max(0, static_cast<int>(std::min({v0.x, v1.x, v2.x})));
     int minY = std::max(0, static_cast<int>(std::min({v0.y, v1.y, v2.y})));
@@ -255,7 +256,7 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                 {
                     depth_buffer[px + (py * m_Width)] = depth;
 
-                    // #if DEBUG
+                    #if DEBUG
                     if (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_T])
                     {
                         int mousex;
@@ -266,22 +267,22 @@ void Renderer::RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1
                             __debugbreak();
                         }
                     }
-                    // #endif
+                    #endif
                     
 
                     float depthW = 1.0f / (1.0f / vertex0.position.w * distV0 + 1.0f / vertex1.position.w * distV1 + 1.0f / vertex2.position.w * distV2);
 
                     Vector<4, float> position = (vertex0.position / vertex0.position.w * distV0 + vertex1.position / vertex1.position.w * distV1 + vertex2.position / vertex2.position.w * distV2) * depthW;
                     Vector<2, float> uv = (vertex0.uv / vertex0.position.w * distV0 + vertex1.uv / vertex1.position.w * distV1 + vertex2.uv / vertex2.position.w * distV2) * depthW;
-                    Vector<3, float> normal = (vertex0.normal / vertex0.position.w * distV0 + vertex1.normal / vertex1.position.w * distV1 + vertex2.normal / vertex2.position.w * distV2) * depthW;
-                    Vector<3, float> tangent = (vertex0.tangent / vertex0.position.w * distV0 + vertex1.tangent / vertex1.position.w * distV1 + vertex2.tangent / vertex2.position.w * distV2) * depthW;
-                    Vector<3, float> viewDirection = (vertex0.viewDirection / vertex0.position.w * distV0 + vertex1.viewDirection / vertex1.position.w * distV1 + vertex2.viewDirection / vertex2.position.w * distV2) * depthW;
+                    Vector3 normal = (vertex0.normal / vertex0.position.w * distV0 + vertex1.normal / vertex1.position.w * distV1 + vertex2.normal / vertex2.position.w * distV2) * depthW;
+                    Vector3 tangent = (vertex0.tangent / vertex0.position.w * distV0 + vertex1.tangent / vertex1.position.w * distV1 + vertex2.tangent / vertex2.position.w * distV2) * depthW;
+                    Vector3 viewDirection = (vertex0.viewDirection / vertex0.position.w * distV0 + vertex1.viewDirection / vertex1.position.w * distV1 + vertex2.viewDirection / vertex2.position.w * distV2) * depthW;
 
                     ColorRGB finalColor;
                     
                     if (m_RenderDepth)
                     {
-                        finalColor = ColorRGB{Remap01(depth, 0.8f, 1.0f)};
+                        finalColor = ColorRGB{Remap01(0.8f, 1.0f, depth)};
                     }
                     else
                     {
@@ -317,22 +318,22 @@ void Renderer::VertexStage(const std::vector<Vertex>& vertices_in, std::vector<V
     auto projection = Matrix<float>::CreatePerspectiveFovLH(m_Camera.fov, aspect, m_Camera.nearPlane, m_Camera.farPlane);
     const Matrix<float> worldViewProjectionMatrix = world_matrix * m_Camera.invViewMatrix * projection;
 
-    std::transform(std::execution::seq, vertices_in.cbegin(), vertices_in.cend(), vertices_out.begin(),
+    std::transform(std::execution::par, vertices_in.cbegin(), vertices_in.cend(), vertices_out.begin(),
        [&](const Vertex& v)
        {
-           Vector<4, float> thing = worldViewProjectionMatrix.TransformPoint(Vector<4, float>{v.position, 1});
+           Vector<4, float> transformedPoint = worldViewProjectionMatrix.TransformPoint(Vector<4, float>{v.position, 1});
 
-           thing.x = thing.x / thing.w;
-           thing.y = thing.y / thing.w;
-           thing.z = thing.z / thing.w;
+           transformedPoint.x = transformedPoint.x / transformedPoint.w;
+           transformedPoint.y = transformedPoint.y / transformedPoint.w;
+           transformedPoint.z = transformedPoint.z / transformedPoint.w;
            
            return Vertex_Out{
-               .position = thing,
+               .position = transformedPoint,
                .color = v.color,
                .uv = v.uv,
-               .normal = world_matrix.TransformVector(v.normal),
-               .tangent = world_matrix.TransformVector(v.tangent),
-               .viewDirection = (m_Camera.origin - world_matrix.TransformPoint(v.position)).Normalized()
+               .normal = world_matrix.TransformVector(v.normal).Normalized(),
+               .tangent = world_matrix.TransformVector(v.tangent).Normalized(),
+               .viewDirection = (m_Camera.origin - (world_matrix.TransformPoint(v.position))).Normalized()
            };
        });
 }
@@ -350,10 +351,10 @@ void Renderer::ChangeShadingMode()
         std::cout << "specular" << '\n'; 
         break;
     case ShadingMode::specular:
-        m_ShadingMode = ShadingMode::combind;
-        std::cout << "combind" << '\n'; 
+        m_ShadingMode = ShadingMode::combined;
+        std::cout << "combined" << '\n'; 
         break;
-    case ShadingMode::combind:
+    case ShadingMode::combined:
         m_ShadingMode = ShadingMode::observed_area;
         std::cout << "observed_area" << '\n'; 
         break;
@@ -383,7 +384,7 @@ Camera& Renderer::GetCamera()
     return m_Camera;
 }
 
-bool Renderer::FrustemCulling(const Vector<3, float>& v0, const Vector<3, float>& v1, const Vector<3, float>& v2) const
+bool Renderer::FrustemCulling(const Vector3& v0, const Vector3& v1, const Vector3& v2) const
 {
     if (CheckInFrustum(v0)) return true;
     if (CheckInFrustum(v1)) return true;
@@ -391,25 +392,25 @@ bool Renderer::FrustemCulling(const Vector<3, float>& v0, const Vector<3, float>
     return false;
 }
 
-bool Renderer::CheckInFrustum(const Vector<3, float>& v) const
+bool Renderer::CheckInFrustum(const Vector3& v) const
 {
     if (v.x < -1 || v.x > 1) return true;
     if (v.y < -1 || v.y > 1) return true;
-    if (v.z < 0 || v.z > 1) return true;
+    if (v.z <  0 || v.z > 1) return true;
     return false;
 }
 
-ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseReflectance, float shininess)
+ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexIn, float diffuseReflectance, float shininess)
 {
     ColorRGB finalColor{0};
 
-    Vector<3, float> normal;
+    Vector3 normal;
     if (m_UseNormalMaps)
     {
-        Vector<3, float> realNormal = vertexin.normal.Normalized();
-        Vector<3, float> realTangent = vertexin.tangent.Normalized();
+        const Vector3 realNormal = vertexIn.normal.Normalized();
+        const Vector3 realTangent = vertexIn.tangent.Normalized();
         // Do this in the vertex stage?
-        Vector<3, float> binormal = Vector<3,float>::Cross(realNormal, realTangent);
+        const Vector3 binormal = Vector3::Cross(realNormal, realTangent);
         Matrix tangentSpaceAxis{
             Vector<4, float>{realTangent, 0},
             Vector<4, float>{binormal, 0},
@@ -417,56 +418,53 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
             Vector<4,float>::Zero
         };
         
-        Vector<3,float> sampledNormal = Vector<3,float>{m_NormalTexture->Sample(vertexin.uv)}.Normalized();
-        normal = Vector<3,float>{(2.0f * sampledNormal.x) - 1.0f, (2.0f * sampledNormal.y) - 1.0f, 2.0f * sampledNormal.z - 1.0f};
-        normal = tangentSpaceAxis.TransformVector(normal.Normalized());
+        Vector3 sampledNormal = Vector3{m_NormalTexture->Sample(vertexIn.uv)};
+        normal = Vector3{(2.0f * sampledNormal.x) - 1.0f, (2.0f * sampledNormal.y) - 1.0f, 2.0f * sampledNormal.z - 1.0f};
+        normal = tangentSpaceAxis.TransformVector(normal);
     }
     else
     {
-        normal = vertexin.normal.Normalized();
+        normal = vertexIn.normal.Normalized();
     }
-    
-    Vector<3, float> lightDirection = GetLights().at(0).Normalized(); // TODO: Multilight
 
-    ColorRGB albedoTexture = m_Texture->Sample(vertexin.uv);
-
-    
-    float obsverableArea = Vector<3,float>::Dot(-lightDirection, normal);
-    obsverableArea = std::max<float>(obsverableArea, 0);
-
-    ColorRGB lambert = (diffuseReflectance * albedoTexture) / PI;
+    const Vector3 lightDirection = GetLights().at(0).Normalized(); // TODO: Multilight
+    const ColorRGB albedoTexture = m_Texture->Sample(vertexIn.uv);
 
 
-    
-    Vector<3,float> reflect = Vector<3,float>::Reflect(lightDirection, normal);
-    float cosAngle = std::max(0.0f,Vector<3,float>::Dot(reflect, normal));
+    // lambert
+    const float observableArea = std::max<float>(0.0f, Vector3::Dot(-lightDirection, normal));
 
-    float specularReflectance = m_SpecularTexture->Sample(vertexin.uv).r;
-    float gloss = m_GlossTexture->Sample(vertexin.uv).r * shininess;
+    const ColorRGB lambert = (diffuseReflectance * albedoTexture) / PI;
 
-    float phong = specularReflectance * std::pow(cosAngle, gloss);
+    // Phong
+    const auto specularReflectance = m_SpecularTexture->Sample(vertexIn.uv).r;
+    const float gloss = m_GlossTexture->Sample(vertexIn.uv).r * shininess;
+
+    const Vector3 reflect = Vector3::Reflect(-lightDirection, normal);
+    const float cosAngle = std::max(0.0f,Vector3::Dot(reflect, -vertexIn.viewDirection));
+
+    const float phong = specularReflectance * std::pow(cosAngle, gloss);
     
     switch (m_ShadingMode)
     {
     case ShadingMode::observed_area:
-        finalColor = ColorRGB{obsverableArea};
+        finalColor = ColorRGB{observableArea};
         break;
     case ShadingMode::diffuse:
-        finalColor = lambert * obsverableArea;
+        finalColor = lambert * observableArea;
         break;
     case ShadingMode::specular:
         finalColor = ColorRGB{phong};
         break;
-    case ShadingMode::combind:
-        finalColor = (albedoTexture * 0.3f) + ColorRGB{phong} + lambert * obsverableArea;
+    case ShadingMode::combined:
+        finalColor = (albedoTexture * 0.3f) + ColorRGB{phong} + lambert * observableArea;
         break;
     }
-    
     
     return finalColor;
 }
 
-std::vector<Vector<3, float>>& Renderer::GetLights()
+std::vector<Vector3>& Renderer::GetLights()
 {
     return m_Lights;
 }

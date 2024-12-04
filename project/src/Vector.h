@@ -48,6 +48,7 @@ struct Vector<2, T>
 	{
 		return {x * scale, y * scale};
 	}
+	
 	Vector operator/(T scale) const
 	{
 		return {x / scale, y / scale};
@@ -261,7 +262,11 @@ Vector<3,T> const Vector<3,T>::UnitZ{0,0,1};
 template<typename T>
 Vector<3,T> const Vector<3,T>::Zero{0,0,0};
 
-
+template<typename T>
+Vector<3,T> operator*(T scale, const Vector<3,T>& v)
+{
+	return {v.x * scale, v.y * scale, v.z * scale };
+}
 
 template<typename T>
 struct Vector<4, T>

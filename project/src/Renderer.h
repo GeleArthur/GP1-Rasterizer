@@ -24,7 +24,7 @@ namespace dae
 		observed_area,
 		diffuse,
 		specular,
-		combind
+		combined
 	};
 
 	class Renderer final
@@ -40,12 +40,12 @@ namespace dae
 
 		void Update(Timer* pTimer);
 		void Render();
-		void RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer, const Texture& texture);
+		void RenderPixels(const Vertex_Out& vertex0, const Vertex_Out& vertex1, const Vertex_Out& vertex2, std::vector<float>& depth_buffer);
 
 		bool SaveBufferToImage() const;
 		bool FrustemCulling(const Vector<3,float>& v0, const Vector<3,float>& v1, const Vector<3,float>& v2) const;
 		bool CheckInFrustum(const Vector<3, float>& v) const;
-		ColorRGB FragmentShader(const Vertex_Out& vertexin, float diffuseReflectance, float shininess);
+		ColorRGB FragmentShader(const Vertex_Out& vertexIn, float diffuseReflectance, float shininess);
 		std::vector<Vector<3,float>>& GetLights();
 
 		void VertexStage(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix<float>& world_matrix) const;
@@ -86,7 +86,7 @@ namespace dae
 		bool m_DEBUG_MoveMouse{};
 
 		bool m_RenderDepth{};
-		ShadingMode m_ShadingMode{ShadingMode::combind};
+		ShadingMode m_ShadingMode{ShadingMode::combined};
 		bool m_Rotating{true};
 		bool m_UseNormalMaps{true};
 

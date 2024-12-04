@@ -17,7 +17,7 @@ namespace dae
 			origin{_origin},
 			fovAngle{_fovAngle},
 			nearPlane{1.0f},
-			farPlane{1000.0f}
+			farPlane{100.0f}
 		{
 		}
 
