@@ -9,7 +9,6 @@
 #include <array>
 #include <execution>
 
-#include "BetterPraseObj.h"
 #include "Maths.h"
 #include "Utils.h"
 #include "Vector.h"

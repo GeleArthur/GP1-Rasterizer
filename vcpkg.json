@@ -1,7 +1,6 @@
 {
     "dependencies": [
         "sdl2",
-        "sdl2-image",
-		"tinyobjloader"
+        "sdl2-image"
     ]
 }
