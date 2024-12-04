@@ -459,7 +459,7 @@ ColorRGB Renderer::FragmentShader(const Vertex_Out& vertexin, float diffuseRefle
         finalColor = ColorRGB{phong};
         break;
     case ShadingMode::combind:
-        finalColor = (albedoTexture * 0.25f) + ColorRGB{phong} + lambert * obsverableArea;
+        finalColor = (albedoTexture * 0.3f) + ColorRGB{phong} + lambert * obsverableArea;
         break;
     }
     

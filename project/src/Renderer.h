@@ -86,7 +86,7 @@ namespace dae
 		bool m_DEBUG_MoveMouse{};
 
 		bool m_RenderDepth{};
-		ShadingMode m_ShadingMode{};
+		ShadingMode m_ShadingMode{ShadingMode::combind};
 		bool m_Rotating{true};
 		bool m_UseNormalMaps{true};
 
