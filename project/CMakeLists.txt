@@ -23,6 +23,13 @@ set(SOURCES
     "src/Timer.h"
     "src/Utils.h"
     "src/Vector.h"
+
+    "src/Clipper.h"
+    "src/Clipper.cpp"
+    "src/Scene.h"
+    "src/Scene.cpp"
+    "src/Material.h"
+    "src/Material.cpp"
 )
 
 # Create the executable

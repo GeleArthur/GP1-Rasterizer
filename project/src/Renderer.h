@@ -55,10 +55,7 @@ namespace dae
 		void ToggleNormalMaps();
 		void ToggleDepthRendering();
 		Camera& GetCamera();
-
-		template<typename T>
-		using Buffer2D= std::vector<std::vector<T>>;
-
+	
 	private:
 		SDL_Window* m_pWindow{};
 
@@ -74,9 +71,9 @@ namespace dae
 		std::unique_ptr<Texture> m_GlossTexture;
 		std::vector<Vector<3,float>> m_Lights;
 
-		Buffer2D<Vertex_Out> m_BinnedVertexOut;
+		std::vector<Vertex_Out> m_clippedTriangles;
 		std::vector<int> m_CoresIds;
-		unsigned int m_CoreCount;
+		unsigned int m_CoreCount{};
 
 		Camera m_Camera{};
 

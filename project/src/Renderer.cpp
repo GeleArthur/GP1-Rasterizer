@@ -20,8 +20,7 @@ using namespace dae;
 using Vector3 = Vector<3,float>;
 
 Renderer::Renderer(SDL_Window* pWindow) :
-    m_pWindow(pWindow),
-    m_CoreCount(std::thread::hardware_concurrency())
+    m_pWindow(pWindow)
 {
     //Initialize
     SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -34,12 +33,13 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
     //Initialize Camera
     m_Camera.Initialize(45.f, {.0f, 0.0f, -50.0f});
-    m_BinnedVertexOut.resize(m_CoreCount);
+
+    m_CoreCount = std::thread::hardware_concurrency();
     m_CoresIds.resize(m_CoreCount);
     std::iota(m_CoresIds.begin(), m_CoresIds.end(), 0);
 
 
-    //
+    
     // m_Meshes.push_back(std::make_unique<Mesh>(
     // 	std::vector<Vertex>{
     // 		{{-3, 3, -2}, {colors::White}, {0,0} },
@@ -108,25 +108,25 @@ Renderer::Renderer(SDL_Window* pWindow) :
         std::move(putput), std::move(putputince), PrimitiveTopology::TriangleList, pain
     ));
     
-    m_Meshes.push_back(std::make_unique<Mesh>(
-        std::vector<Vertex>{
-            {.position= {0, -5, 0}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {20, -5, 0}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {0, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-            {.position= {20, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
-        },
-        std::vector<uint32_t>{
-            2,1,0, 2,3,1
-        },
-        PrimitiveTopology::TriangleList,
-        Matrix<float>{
-            {1, 0, 0, 0},
-            {0, 1, 0, 0},
-            {0, 0, 1, 0},
-            {0, 0, 0, 1},
-        }
-    ));
-    
+    // m_Meshes.push_back(std::make_unique<Mesh>(
+    //     std::vector<Vertex>{
+    //         {.position= {0, -5, 0}, .color= {colors::White}, .uv= {0, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+    //         {.position= {20, -5, 0}, .color= {colors::White}, .uv= {1, 0}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+    //         {.position= {0, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+    //         {.position= {20, -5, 1}, .color= {colors::White}, .uv= {1, 1}, .normal = {0, 0, -1}, .tangent = {1, 0, 0}},
+    //     },
+    //     std::vector<uint32_t>{
+    //         2,1,0, 2,3,1
+    //     },
+    //     PrimitiveTopology::TriangleList,
+    //     Matrix<float>{
+    //         {1, 0, 0, 0},
+    //         {0, 1, 0, 0},
+    //         {0, 0, 1, 0},
+    //         {0, 0, 0, 1},
+    //     }
+    // ));
+    //
     m_Lights.push_back({0.577f, -0.577f, 0.577f});
     
     
@@ -165,45 +165,47 @@ void Renderer::Render()
     for (const std::unique_ptr<Mesh>& mesh : m_Meshes)
     {
         mesh->vertices_clipped.clear();
+        m_clippedTriangles.clear();
 
         VertexStage(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
+        m_clippedTriangles.reserve(mesh->vertices_out.size());
 
-        for (size_t i = 0; i < (mesh->primitiveTopology == PrimitiveTopology::TriangleList
-                                 ? mesh->indices.size()
-                                 : mesh->indices.size() - 2); i +=
-             mesh->primitiveTopology == PrimitiveTopology::TriangleList ? 3 : 1)
+        int coreInterval = ((static_cast<int>(mesh->vertices_out.size())) / m_CoreCount)+1;
+        
+        std::for_each(std::execution::par, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
         {
-            const Vertex_Out* vertex0{};
-            const Vertex_Out* vertex1{};
-            const Vertex_Out* vertex2{};
-
-            switch (mesh->primitiveTopology)
+            for (int i = coreInterval * coreId; i < coreInterval * (coreId+1); i+=3)
             {
-            case PrimitiveTopology::TriangleList:
-                vertex0 = &mesh->vertices_out[mesh->indices[i]];
-                vertex1 = &mesh->vertices_out[mesh->indices[i + 1]];
-                vertex2 = &mesh->vertices_out[mesh->indices[i + 2]];
-                break;
-            case PrimitiveTopology::TriangleStrip:
-                if (!(i & 1)) // isEven
+                if (mesh->indices.size() <= i) continue;
+                Vertex_Out& v0 = mesh->vertices_out[mesh->indices[i + 0]];
+                Vertex_Out& v1 = mesh->vertices_out[mesh->indices[i + 1]];
+                Vertex_Out& v2 = mesh->vertices_out[mesh->indices[i + 2]];
+
+                if (!FrustemCulling(Vector3{v0.position}, Vector3{v1.position}, Vector3{v2.position}))
                 {
-                    vertex0 = &mesh->vertices_out[mesh->indices[i]];
-                    vertex1 = &mesh->vertices_out[mesh->indices[i + 1]];
-                    vertex2 = &mesh->vertices_out[mesh->indices[i + 2]];
+                    m_clippedTriangles.push_back(v0);
+                    m_clippedTriangles.push_back(v1);
+                    m_clippedTriangles.push_back(v2);
                 }
-                else // odd
-                {
-                    vertex0 = &mesh->vertices_out[mesh->indices[i]];
-                    vertex2 = &mesh->vertices_out[mesh->indices[i + 1]];
-                    vertex1 = &mesh->vertices_out[mesh->indices[i + 2]];
-                }
-                break;
+            }
+        });
+
+        coreInterval = ((static_cast<int>(m_clippedTriangles.size())) / m_CoreCount)+1;
+
+        std::for_each(std::execution::par, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
+        {
+            for (int i = coreInterval * coreId; i < coreInterval * (coreId+1); i+=3)
+            {
+                if (m_clippedTriangles.size()-3 <= i) continue;
+                
+                Vertex_Out& vertex0 = m_clippedTriangles[i + 0];
+                Vertex_Out& vertex1 = m_clippedTriangles[i + 1];
+                Vertex_Out& vertex2 = m_clippedTriangles[i + 2];
+                RenderPixels(vertex0, vertex1, vertex2, depthBuffer);
             }
 
-            if (FrustemCulling(Vector3{vertex0->position}, Vector3{vertex1->position}, Vector3{vertex2->position})) continue;
-
-            RenderPixels(*vertex0, *vertex1, *vertex2, depthBuffer);
-        }
+        });
+        
     }
 
 
