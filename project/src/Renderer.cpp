@@ -160,7 +160,7 @@ void Renderer::Render()
     SDL_FillRect(m_pBackBuffer, nullptr, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
     SDL_LockSurface(m_pBackBuffer);
 
-    std::ranges::fill(depthBuffer, std::numeric_limits<float>::max());
+    std::fill(depthBuffer.begin(), depthBuffer.end(), std::numeric_limits<float>::max());
 
     for (const std::unique_ptr<Mesh>& mesh : m_Meshes)
     {
@@ -169,12 +169,12 @@ void Renderer::Render()
 
         VertexStage(mesh->vertices, mesh->vertices_out, mesh->worldMatrix);
         m_clippedTriangles.reserve(mesh->vertices_out.size());
-
-        int coreInterval = ((static_cast<int>(mesh->vertices_out.size())) / m_CoreCount)+1;
         
-        std::for_each(std::execution::par, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
+        int coreInterval = (static_cast<int>( mesh->vertices_out.size()/ 3 / static_cast<int>(m_CoreCount) ))+1;
+
+        std::for_each(std::execution::seq, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
         {
-            for (int i = coreInterval * coreId; i < coreInterval * (coreId+1); i+=3)
+            for (int i = coreInterval*3 * coreId; i < (coreInterval*3 * coreId)+coreInterval; i+=3)
             {
                 if (mesh->indices.size() <= i) continue;
                 Vertex_Out& v0 = mesh->vertices_out[mesh->indices[i + 0]];
@@ -190,11 +190,13 @@ void Renderer::Render()
             }
         });
 
-        coreInterval = ((static_cast<int>(m_clippedTriangles.size())) / m_CoreCount)+1;
-
-        std::for_each(std::execution::par, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
+        
+        
+        coreInterval = (static_cast<int>( m_clippedTriangles.size()/ 3 / static_cast<int>(m_CoreCount) ))+1;
+        
+        std::for_each(std::execution::seq, m_CoresIds.begin(), m_CoresIds.end(), [&](int coreId)
         {
-            for (int i = coreInterval * coreId; i < coreInterval * (coreId+1); i+=3)
+            for (int i = coreInterval*3 * coreId; i < (coreInterval*3 * coreId)+coreInterval; i+=3)
             {
                 if (m_clippedTriangles.size()-3 <= i) continue;
                 
@@ -203,7 +205,7 @@ void Renderer::Render()
                 Vertex_Out& vertex2 = m_clippedTriangles[i + 2];
                 RenderPixels(vertex0, vertex1, vertex2, depthBuffer);
             }
-
+        
         });
         
     }
